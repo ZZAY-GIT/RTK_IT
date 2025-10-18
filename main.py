@@ -1,3 +1,3 @@
-from DB.Users import User, db
+from DB.DataBaseManager import DataBaseManager
 
-User.delete("ki7883521@gmail.com")
+db = DataBaseManager()
