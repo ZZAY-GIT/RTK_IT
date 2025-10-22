@@ -30,6 +30,7 @@ class DataBaseManager:
         except Exception as e:
             logging.error(f"Error adding record {e}")
 
+
     def add_user(self, email: str, password: str, name: str, role: str):
         password_hash = hash_password(password)  # Хешируем пароль
         with self.DBSession() as _s:
@@ -92,3 +93,4 @@ def hash_password(password: str) -> bytes:
 def verify_password(password: str, hashed_password: bytes) -> bool:
     password_bytes = password.encode('utf-8')
     return bcrypt.checkpw(password_bytes, hashed_password)
+

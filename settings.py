@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     PROJECT_ROOT: pathlib.Path = pathlib.Path(__file__)
 
     CONN_STR: str = Field(default="postgresql://warehouse_user:secure_password@localhost:5432/warehouse_db", alias="CONN_STR")
+    JWT_SECRET: str = Field(default="key", alias="JWT_SECRET")
 
 
 settings = Settings()
