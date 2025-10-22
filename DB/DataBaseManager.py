@@ -79,6 +79,17 @@ class DataBaseManager:
         record = record.password_hash
         return record
 
+    def add_robot(self):
+        ...
+
+    def get_robot(self):
+        ...
+
+    def send_robot_data(self,data):
+        ...
+
+
+
 
 db = DataBaseManager(settings.CONN_STR)
 
