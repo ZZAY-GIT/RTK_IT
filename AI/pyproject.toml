@@ -1,0 +1,19 @@
+[project]
+name = "hackaton"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Mark",email = "mark03082006@gmail.com"}
+]
+license = {text = "\u001b[5~"}
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "openai (>=2.5.0,<3.0.0)",
+    "pydantic-settings (>=2.11.0,<3.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
