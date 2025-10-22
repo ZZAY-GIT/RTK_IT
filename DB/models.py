@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, DateTime, Date, DECIMAL, ForeignKey
+from sqlalchemy import Column, Integer, String, DateTime, Date, DECIMAL, ForeignKey, LargeBinary
 from sqlalchemy.orm import relationship, declarative_base
 from datetime import datetime
 
@@ -9,8 +9,8 @@ class User(Base):
     __tablename__ = 'users'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    login = Column(String(255), unique=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
+    email = Column(String(255), unique=True, nullable=False)
+    password_hash = Column(LargeBinary, nullable=False)
     name = Column(String(255), nullable=False)
     role = Column(String(50), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
