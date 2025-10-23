@@ -2,13 +2,16 @@ import json
 import httpx
 import re
 from settings import settings
+from typing import List, Dict
+from api import predict
+from pydantic import BaseModel
 
 class YandexGPTClient:
     def __init__(self, url=settings.YANDEX_URL, api_key=settings.YANDEX_API_KEY, model=settings.YANDEX_MODEL):
         self.api_key = api_key
         self.url = url
         self.model = model
-        self.last_prediction = {} 
+        self.last_prediction = None
 
     def send_to_ai(self, inventory_data, historical_data):
         prompt = f"""
@@ -41,7 +44,6 @@ class YandexGPTClient:
         with httpx.Client() as client:
             response = client.post(self.url, headers=headers, json=payload)
             response = json.loads(response.text)
-            # print(response, type(response))
             result_text = response['result']['alternatives'][0]['message']['text']
             return result_text
 
@@ -50,14 +52,29 @@ class YandexGPTClient:
         self.last_prediction = self.safe_parse_json(self.last_prediction)
         return self.last_prediction
 
-    def send_to_api(self):
-        pass
+    def send_to_api(self, inventory_data, historical_data):
+        if self.last_prediction:
+            categories = self.last_prediction
+        else:
+            categories = self.get_prediction(inventory_data, historical_data)
+
+        class PredictRequest(BaseModel):
+            period_days: int
+            categories: List[Dict]
+
+        request_data = {
+            "period_days": 7,
+            "categories": categories
+        }
+        
+        with httpx.Client() as client:
+            response = client.post(settings.API_URL + "/api/ai/predict", json=request_data)
+        
+        return response.text
     
     @staticmethod
     def safe_parse_json(json_str):
         try:
-            # response_json = json.loads(json_str)
-            # result_text = response_json['result']['alternatives'][0]['message']['text']
             result_text = json_str
             if "```json" in result_text:
                 result_text = result_text.replace("```json", "```")

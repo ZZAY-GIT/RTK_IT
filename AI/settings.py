@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     YANDEX_API_KEY: str = Field(default="AQVN2shaS1078O7IG0Imrbg-E_oaaOMX331y1e4B", description="Yandex Cloud API key")
     YANDEX_URL: str = Field(default="https://llm.api.cloud.yandex.net/foundationModels/v1/completion", description="Yandex GPT API URL")
     YANDEX_MODEL: str = Field(default="gpt://b1grt4ckppkm30rupg8p/yandexgpt-lite", description="Yandex GPT model name")
+    API_URL: str = Field(default="http://127.0.0.1:8000", description="Yandex GPT model name")
 
 settings = Settings()
 print(settings.model_dump())
