@@ -1,16 +1,15 @@
 [project]
-name = "hackaton"
+name = "rtk-it"
 version = "0.1.0"
 description = ""
 authors = [
     {name = "Mark",email = "mark03082006@gmail.com"}
 ]
-license = {text = "\u001b[5~"}
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-    "openai (>=2.5.0,<3.0.0)",
-    "pydantic-settings (>=2.11.0,<3.0.0)"
+    "fastapi (>=0.119.1,<0.120.0)",
+    "httpx (>=0.28.1,<0.29.0)"
 ]
 
 

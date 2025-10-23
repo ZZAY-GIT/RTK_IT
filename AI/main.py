@@ -26,13 +26,13 @@ with open("inventoryData.json", "r", encoding="utf-8") as f:
     inv = json.load(f)
 s = YandexGPTClient()
 c = 0
-for i in range(100):
+for i in range(10):
     ii = s.send_to_ai(inv, his)
     i1 = s.safe_parse_json(ii)
     if not "Ошибка JSON" in i1:
         c += 1
         print(i1)
-        print(f"Успешно {c}/100")
+        print(f"Успешно {c}/10")
     else:
         print(ii)
         print('-------------------------')
