@@ -4,6 +4,7 @@ from sqlalchemy import create_engine
 import logging
 from sqlalchemy.exc import IntegrityError
 from settings import settings
+from datetime import datetime, timedelta
 import bcrypt
 
 class DataBaseManager:
@@ -29,8 +30,8 @@ class DataBaseManager:
                 logging.debug("Record added")
         except Exception as e:
             logging.error(f"Error adding record {e}")
-
-
+    
+    # Методы User
     def add_user(self, email: str, password: str, name: str, role: str):
         password_hash = hash_password(password)  # Хешируем пароль
         with self.DBSession() as _s:
@@ -79,7 +80,36 @@ class DataBaseManager:
             return None
         record = record.password_hash
         return record
-
+    
+    #Работа робота
+    def add_robot_data(self, robot_data):
+        with self.DBSession() as _s:
+            n = len(robot_data.get("scan_results", 0))
+            for i in range(n):
+                new_inventory_history = self.InventoryHistory(
+                    robot_id=robot_data.get("robot_id", None),
+                    zone=robot_data.get("location", None).get("zone", None),
+                    row_number=robot_data.get("location", None).get("row", None),
+                    shelf_number=robot_data.get("location", None).get("shelf", None),
+                    product_id=robot_data.get("scan_results", None)[i].get("product_id", None),
+                    quantity=robot_data.get("scan_results", None)[i].get("quantity", None),
+                    status=robot_data.get("scan_results", None)[i].get("status", None),
+                    scanned_at=robot_data.get("timestamp", None)
+                )
+                _s.add(new_inventory_history)
+            try:
+                _s.commit()
+            except IntegrityError:
+                _s.rollback()
+                return None
+        #self._commit_record(new_inventory_history)
+    
+    def get_last_day_inventory_history(self):
+        with self.DBSession() as _s:
+            existing_inventory_history = _s.query(self.InventoryHistory).filter(self.InventoryHistory.scanned_at >= datetime.utcnow() - timedelta(hours=24)).all()
+            return existing_inventory_history
+        
+    
 
 db = DataBaseManager(settings.CONN_STR)
 
@@ -93,4 +123,3 @@ def hash_password(password: str) -> bytes:
 def verify_password(password: str, hashed_password: bytes) -> bool:
     password_bytes = password.encode('utf-8')
     return bcrypt.checkpw(password_bytes, hashed_password)
-
