@@ -1,0 +1,25 @@
+{
+    "robot_id": "RB-001",
+    "timestamp": "2025-10-23T17:23:20.357082Z",
+    "location": {
+        "zone": "A",
+        "row": 1,
+        "shelf": 1
+    },
+    "scan_results": [
+        {
+            "product_id": "TEL-6789",
+            "product_name": "IP-телефон T46S",
+            "quantity": 55,
+            "status": "OK"
+        },
+        {
+            "product_id": "TEL-2345",
+            "product_name": "Коммутатор SG-108",
+            "quantity": 57,
+            "status": "OK"
+        }
+    ],
+    "battery_level": 100,
+    "next_checkpoint": "A-2-1"
+}

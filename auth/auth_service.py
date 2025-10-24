@@ -1,9 +1,8 @@
 from fastapi import HTTPException, status
-from jose import jwt
+import jwt
 from datetime import datetime, timedelta
-import os
 from settings import settings
-from DB.DataBaseManager import db, hash_password, verify_password
+from DB.DataBaseManager import db, verify_password
 
 class AuthService:
     def __init__(self):
@@ -16,23 +15,23 @@ class AuthService:
 
     def create_jwt_token(self, data: dict) -> str:
         expire = datetime.utcnow() + timedelta(minutes=self.TOKEN_EXPIRE_MINUTES)
-        return jwt.encode({**data, "exp": expire}, self.JWT_SECRET, algorithm=self.ALGORITHM)
+        to_encode = {**data, "exp": expire}
+        return jwt.encode(to_encode, self.JWT_SECRET, algorithm=self.ALGORITHM)
 
     def login(self, email: str, password: str) -> dict:
-        # 1. Получаем хеш
+        # 1. Get hashed password
         hashed = self.get_user_password(email)
-        if not hashed or not verify_password(password, hashed.encode()):
+        if not hashed or not verify_password(password, hashed):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Неверный email или пароль",
+                detail=f"Invalid email or passord {hashed}",
                 headers={"WWW-Authenticate": "Bearer"}
             )
 
-        # 2. Получаем пользователя
+        # 2. Get user
         user = db.get_user(email)
         
-
-        # 3. JWT
+        # 3. Create JWT
         token = self.create_jwt_token({
             "sub": str(user.id),
             "email": user.email,
@@ -49,5 +48,8 @@ class AuthService:
                 "role": user.role
             }
         }
-
+        
         return user_response
+    
+
+auth_service = AuthService()

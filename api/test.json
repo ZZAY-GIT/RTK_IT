@@ -1,0 +1,367 @@
+{
+    "robot_id": "RB-001",
+    "timestamp": "2025-10-23T17:23:20.357082Z",
+    "location": {
+        "zone": "A",
+        "row": 1,
+        "shelf": 1
+    },
+    "scan_results": [
+        {
+            "product_id": "TEL-6789",
+            "product_name": "IP-телефон T46S",
+            "quantity": 55,
+            "status": "OK"
+        },
+        {
+            "product_id": "TEL-2345",
+            "product_name": "Коммутатор SG-108",
+            "quantity": 57,
+            "status": "OK"
+        }
+    ],
+    "battery_level": 100,
+    "next_checkpoint": "A-2-1"
+}{
+    "robot_id": "RB-005",
+    "timestamp": "2025-10-23T17:23:20.360626Z",
+    "location": {
+        "zone": "A",
+        "row": 1,
+        "shelf": 1
+    },
+    "scan_results": [
+        {
+            "product_id": "TEL-8901",
+            "product_name": "Модем DSL-2640U",
+            "quantity": 86,
+            "status": "OK"
+        },
+        {
+            "product_id": "TEL-4567",
+            "product_name": "Роутер RT-AC68U",
+            "quantity": 27,
+            "status": "OK"
+        }
+    ],
+    "battery_level": 100,
+    "next_checkpoint": "A-2-1"
+}{
+    "robot_id": "RB-003",
+    "timestamp": "2025-10-23T17:23:20.358972Z",
+    "location": {
+        "zone": "A",
+        "row": 1,
+        "shelf": 1
+    },
+    "scan_results": [
+        {
+            "product_id": "TEL-8901",
+            "product_name": "Модем DSL-2640U",
+            "quantity": 46,
+            "status": "OK"
+        }
+    ],
+    "battery_level": 100,
+    "next_checkpoint": "A-2-1"
+}{
+    "robot_id": "RB-004",
+    "timestamp": "2025-10-23T17:23:20.360113Z",
+    "location": {
+        "zone": "A",
+        "row": 1,
+        "shelf": 1
+    },
+    "scan_results": [
+        {
+            "product_id": "TEL-4567",
+            "product_name": "Роутер RT-AC68U",
+            "quantity": 88,
+            "status": "OK"
+        }
+    ],
+    "battery_level": 100,
+    "next_checkpoint": "A-2-1"
+}{
+    "robot_id": "RB-002",
+    "timestamp": "2025-10-23T17:23:20.358062Z",
+    "location": {
+        "zone": "A",
+        "row": 1,
+        "shelf": 1
+    },
+    "scan_results": [
+        {
+            "product_id": "TEL-3456",
+            "product_name": "Кабель UTP Cat6",
+            "quantity": 42,
+            "status": "OK"
+        },
+        {
+            "product_id": "TEL-2345",
+            "product_name": "Коммутатор SG-108",
+            "quantity": 52,
+            "status": "OK"
+        },
+        {
+            "product_id": "TEL-4567",
+            "product_name": "Роутер RT-AC68U",
+            "quantity": 5,
+            "status": "CRITICAL"
+        }
+    ],
+    "battery_level": 100,
+    "next_checkpoint": "A-2-1"
+}{
+    "robot_id": "RB-001",
+    "timestamp": "2025-10-23T17:23:32.402299Z",
+    "location": {
+        "zone": "A",
+        "row": 1,
+        "shelf": 2
+    },
+    "scan_results": [
+        {
+            "product_id": "TEL-3456",
+            "product_name": "Кабель UTP Cat6",
+            "quantity": 67,
+            "status": "OK"
+        },
+        {
+            "product_id": "TEL-8901",
+            "product_name": "Модем DSL-2640U",
+            "quantity": 19,
+            "status": "LOW_STOCK"
+        }
+    ],
+    "battery_level": 99.7,
+    "next_checkpoint": "A-2-2"
+}{
+    "robot_id": "RB-005",
+    "timestamp": "2025-10-23T17:23:32.424692Z",
+    "location": {
+        "zone": "A",
+        "row": 1,
+        "shelf": 2
+    },
+    "scan_results": [
+        {
+            "product_id": "TEL-6789",
+            "product_name": "IP-телефон T46S",
+            "quantity": 54,
+            "status": "OK"
+        },
+        {
+            "product_id": "TEL-4567",
+            "product_name": "Роутер RT-AC68U",
+            "quantity": 31,
+            "status": "OK"
+        },
+        {
+            "product_id": "TEL-2345",
+            "product_name": "Коммутатор SG-108",
+            "quantity": 91,
+            "status": "OK"
+        }
+    ],
+    "battery_level": 99.5,
+    "next_checkpoint": "A-2-2"
+}{
+    "robot_id": "RB-004",
+    "timestamp": "2025-10-23T17:23:32.429922Z",
+    "location": {
+        "zone": "A",
+        "row": 1,
+        "shelf": 2
+    },
+    "scan_results": [
+        {
+            "product_id": "TEL-3456",
+            "product_name": "Кабель UTP Cat6",
+            "quantity": 31,
+            "status": "OK"
+        },
+        {
+            "product_id": "TEL-8901",
+            "product_name": "Модем DSL-2640U",
+            "quantity": 57,
+            "status": "OK"
+        },
+        {
+            "product_id": "TEL-2345",
+            "product_name": "Коммутатор SG-108",
+            "quantity": 84,
+            "status": "OK"
+        }
+    ],
+    "battery_level": 99.9,
+    "next_checkpoint": "A-2-2"
+}{
+    "robot_id": "RB-003",
+    "timestamp": "2025-10-23T17:23:32.429578Z",
+    "location": {
+        "zone": "A",
+        "row": 1,
+        "shelf": 2
+    },
+    "scan_results": [
+        {
+            "product_id": "TEL-8901",
+            "product_name": "Модем DSL-2640U",
+            "quantity": 11,
+            "status": "LOW_STOCK"
+        },
+        {
+            "product_id": "TEL-4567",
+            "product_name": "Роутер RT-AC68U",
+            "quantity": 54,
+            "status": "OK"
+        },
+        {
+            "product_id": "TEL-6789",
+            "product_name": "IP-телефон T46S",
+            "quantity": 10,
+            "status": "CRITICAL"
+        }
+    ],
+    "battery_level": 99.9,
+    "next_checkpoint": "A-2-2"
+}{
+    "robot_id": "RB-002",
+    "timestamp": "2025-10-23T17:23:32.427798Z",
+    "location": {
+        "zone": "A",
+        "row": 1,
+        "shelf": 2
+    },
+    "scan_results": [
+        {
+            "product_id": "TEL-6789",
+            "product_name": "IP-телефон T46S",
+            "quantity": 87,
+            "status": "OK"
+        }
+    ],
+    "battery_level": 99.7,
+    "next_checkpoint": "A-2-2"
+}{
+    "robot_id": "RB-001",
+    "timestamp": "2025-10-23T17:23:44.441646Z",
+    "location": {
+        "zone": "A",
+        "row": 1,
+        "shelf": 3
+    },
+    "scan_results": [
+        {
+            "product_id": "TEL-2345",
+            "product_name": "Коммутатор SG-108",
+            "quantity": 31,
+            "status": "OK"
+        }
+    ],
+    "battery_level": 99.5,
+    "next_checkpoint": "A-2-3"
+}{
+    "robot_id": "RB-003",
+    "timestamp": "2025-10-23T17:23:44.484057Z",
+    "location": {
+        "zone": "A",
+        "row": 1,
+        "shelf": 3
+    },
+    "scan_results": [
+        {
+            "product_id": "TEL-3456",
+            "product_name": "Кабель UTP Cat6",
+            "quantity": 64,
+            "status": "OK"
+        },
+        {
+            "product_id": "TEL-2345",
+            "product_name": "Коммутатор SG-108",
+            "quantity": 80,
+            "status": "OK"
+        }
+    ],
+    "battery_level": 99.6,
+    "next_checkpoint": "A-2-3"
+}{
+    "robot_id": "RB-005",
+    "timestamp": "2025-10-23T17:23:44.476904Z",
+    "location": {
+        "zone": "A",
+        "row": 1,
+        "shelf": 3
+    },
+    "scan_results": [
+        {
+            "product_id": "TEL-4567",
+            "product_name": "Роутер RT-AC68U",
+            "quantity": 71,
+            "status": "OK"
+        },
+        {
+            "product_id": "TEL-3456",
+            "product_name": "Кабель UTP Cat6",
+            "quantity": 57,
+            "status": "OK"
+        }
+    ],
+    "battery_level": 99.4,
+    "next_checkpoint": "A-2-3"
+}{
+    "robot_id": "RB-004",
+    "timestamp": "2025-10-23T17:23:44.479330Z",
+    "location": {
+        "zone": "A",
+        "row": 1,
+        "shelf": 3
+    },
+    "scan_results": [
+        {
+            "product_id": "TEL-8901",
+            "product_name": "Модем DSL-2640U",
+            "quantity": 63,
+            "status": "OK"
+        },
+        {
+            "product_id": "TEL-4567",
+            "product_name": "Роутер RT-AC68U",
+            "quantity": 46,
+            "status": "OK"
+        },
+        {
+            "product_id": "TEL-3456",
+            "product_name": "Кабель UTP Cat6",
+            "quantity": 27,
+            "status": "OK"
+        }
+    ],
+    "battery_level": 99.7,
+    "next_checkpoint": "A-2-3"
+}{
+    "robot_id": "RB-002",
+    "timestamp": "2025-10-23T17:23:44.481824Z",
+    "location": {
+        "zone": "A",
+        "row": 1,
+        "shelf": 3
+    },
+    "scan_results": [
+        {
+            "product_id": "TEL-3456",
+            "product_name": "Кабель UTP Cat6",
+            "quantity": 89,
+            "status": "OK"
+        },
+        {
+            "product_id": "TEL-2345",
+            "product_name": "Коммутатор SG-108",
+            "quantity": 33,
+            "status": "OK"
+        }
+    ],
+    "battery_level": 99.3,
+    "next_checkpoint": "A-2-3"
+}
