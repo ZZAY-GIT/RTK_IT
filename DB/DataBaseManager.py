@@ -102,15 +102,22 @@ class DataBaseManager:
                 _s.add(new_inventory_history)
             try:
                 _s.commit()
+                return True
             except IntegrityError:
                 _s.rollback()
-                return None
+                return False
         #self._commit_record(new_inventory_history)
     
     # Сводка работы роботов за последние 24 часа
-    def get_last_day_inventory_history(self):
+    def get_last_day_inventory_history(self, from_date, to_date, zone, row, shelf, product_id, status):
+        """
+        Возвращает историю инвентаризации:
+        - Если today=True: с 00:00 текущего дня (UTC)
+        - Если today=False: за последние 24 часа
+        """
         with self.DBSession() as _s:
-            existing_inventory_history = _s.query(self.InventoryHistory).filter(self.InventoryHistory.scanned_at >= datetime.utcnow() - timedelta(hours=24)).all()
+            existing_inventory_history = _s.query(self.InventoryHistory) \
+                .filter(self.InventoryHistory.scanned_at >= 24).all()
             return existing_inventory_history
         
     # dashboard
@@ -119,8 +126,8 @@ class DataBaseManager:
     def get_active_robots(self): # Не проверено
         with self.DBSession() as _s:
             active_robots_count = _s.query(Robot).filter(Robot.status == 'active').count()
-            coun_robots = _s.query(Robot).count()
-            return (active_robots_count, coun_robots)
+            count_robots = _s.query(Robot).count()
+            return (active_robots_count, count_robots)
         
     # Средний заряд батареи роботов, возвращает чило
     def average_battery_charge(self): # Не проверено

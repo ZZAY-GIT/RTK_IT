@@ -19,18 +19,29 @@ class PredictResponse(BaseModel):
     predictions: List[Dict]
     confidence: float
 
+class Location(BaseModel):
+    zone: str
+    row: int
+    shelf: int
 
+class ScanResult(BaseModel):
+    product_id: str
+    product_name: str
+    quantity: int
+    status: str
 
-@app.get("/test")
-def read_user(user_id: int | None = None):
-    """Получить пользователя по ID"""
-    state = {"robots": [123, 332, 12], "recent_scans": [543], "statistics": {123: {"battary": 98, "coords": (123, 322)}}}
-    return state
+class RobotData(BaseModel):
+    robot_id: str
+    timestamp: str
+    location: Location
+    scan_results: List[ScanResult]
+    battery_level: float
+    next_checkpoint: str
+
 
 @app.post("/api/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
     return auth_service.login(form_data.username, form_data.password)
-
 
 
 @app.post("/api/ai/predict", response_model=PredictResponse)
@@ -47,11 +58,22 @@ def read_user(user_id: int | None = None):
     return state
 
 @app.post("/api/robots/data")
-def receive_robot_data(data: dict):
-    pass
-    # with open("C:\\RTK_IT\\api\\test.json", "a", encoding="utf-8") as file:
-    #     json.dump(data, file, ensure_ascii=False, indent=4)
-    # return {"status": "success", "message": "Data received"}
+def receive_robot_data(data: RobotData):
+    status = db.add_robot_data(data)
+    if status:
+        return {"status": "success", "message": "Data received"}
+    else: 
+        return {"status": "failed", "message": "Data not received"}
+    
+@app.get("/api/inventory/history")
+async def get_history():
+    history = db.get_last_day_inventory_history()
+    return history
+
+@app.get("/api/dashboard/current")
+async def get_current_data():
+    data = db.get_current_state()
+    return data
 
 
 if __name__ == "__main__":
