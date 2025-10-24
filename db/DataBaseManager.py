@@ -1,5 +1,4 @@
-
-from DB.models import Base, User, Robot, Product, InventoryHistory, AIPrediction
+from db.models import Base, User, Robot, Product, InventoryHistory, AIPrediction
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, func
 import logging
@@ -8,6 +7,7 @@ from settings import settings
 from datetime import datetime, timedelta
 import bcrypt
 from datetime import datetime
+from typing import List, Dict
 
 
 class DataBaseManager:
@@ -164,7 +164,57 @@ class DataBaseManager:
                 _s.rollback()
                 logging.error(f"Failed to create robot with id {robot_id}: IntegrityError")
                 return None
+    
+    def add_ai_prediction(self, predictions: List[Dict], confidence_score: float):
+        """
+        Добавляет предсказания AI в таблицу ai_predictions.
+        predictions: список словарей с полями product_id, days_until_stockout, recommended_order
+        confidence_score: уровень достоверности предсказания
+        """
+        with self.DBSession() as _s:
+            prediction_date = predictions[-1].get("created_at", None)
+            predictions = predictions[:-1]
+            for prediction in predictions:
+                product_id = prediction.get("product_id", None)
+                days_until_stockout = prediction.get("days_until_stockout", None)
+                recommended_order = prediction.get("recommended_order", None)
+                # Создание новой записи
+                new_prediction = self.AIPrediction(
+                    product_id=product_id,
+                    days_until_stockout=days_until_stockout,
+                    recommended_order=recommended_order,
+                    confidence_score=confidence_score,
+                    prediction_date=prediction_date
+                )
+                _s.add(new_prediction)
+                logging.info(f"Added AI prediction for product {product_id}")
 
+            try:
+                _s.commit()
+                logging.info(f"Successfull")
+
+            except IntegrityError:
+                _s.rollback()
+                logging.error("Failed to add AI predictions: IntegrityError")
+
+    def get_ai_predictions(self):
+        with self.DBSession() as _s:
+            prediction = _s.query(self.AIPrediction).order_by(self.AIPrediction.prediction_date.desc()).first()
+            if prediction:
+                logging.info(f"Found latest prediction for product_id: {prediction.product_id}, date: {prediction.prediction_date}")
+                return {
+                    "id": prediction.id,
+                    "product_id": prediction.product_id,
+                    "prediction_date": prediction.prediction_date.isoformat() if prediction.prediction_date else None,
+                    "days_until_stockout": prediction.days_until_stockout,
+                    "recommended_order": prediction.recommended_order,
+                    "confidence_score": float(prediction.confidence_score) if prediction.confidence_score else None,
+                    "created_at": prediction.created_at.isoformat() if prediction.created_at else None
+                }
+            else:
+                logging.info(f"Entry not found")
+                return None
+    
     def get_robot(self, robot_id: str):
         with self.DBSession() as _s:
             robot = _s.query(self.Robot).filter(self.Robot.id == robot_id).first()

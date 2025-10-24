@@ -1,10 +1,22 @@
 from db.DataBaseManager import db, verify_password
 from api.api import app
+from ai.yandex_gpt_client import yandex_client
 import json
 
 # 1. Добавить пользователя (хеширование происходит внутри add_user)
-#db.add_user("ampleenkov.do@gmail.com", "123123123", "Daniil", "operator")
 
+# predict = '[{"product_id": "avc", "days_until_stockout":123, "recommended_order":321}, {"product_id": "avc", "days_until_stockout":456, "recommended_order":654}]'
+# predict = yandex_client.safe_parse_json(predict)
+prediction = db.get_ai_predictions()
+print(prediction)
+# if prediction:
+#     print(f"Latest prediction: Product: {prediction.product_id}, "
+#           f"Date: {prediction.prediction_date}, "
+#           f"Days until stockout: {prediction.days_until_stockout}, "
+#           f"Recommended order: {prediction.recommended_order}")
+# else:
+#     print("No predictions found")
+# print(db.get_ai_predictions())
 ## 2. Проверить пароль через БД
 #password = db.get_user_password("ampleenkov.do@gmail.com")
 #print(password)
@@ -17,10 +29,10 @@ import json
 #if __name__ == "__main__":
 #    import uvicorn
 #    uvicorn.run(app, host="0.0.0.0", port=8000)
-with open("C:\\RTK_IT\\api\\invent.json", "r", encoding="utf-8") as file:
-    data = json.load(file)
-    db.add_robot_data(data)
-    print(db.get_last_day_inventory_history())
+# with open("C:\\RTK_IT\\api\\invent.json", "r", encoding="utf-8") as file:
+#     data = json.load(file)
+#     db.add_robot_data(data)
+#     print(db.get_last_day_inventory_history())
 
 
 # # 2. Проверить пароль через БД
