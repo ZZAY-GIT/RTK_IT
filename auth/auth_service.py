@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 import jwt
 from datetime import datetime, timedelta
 from settings import settings
-from DB.DataBaseManager import db, verify_password
+from db.DataBaseManager import db, verify_password
 
 class AuthService:
     def __init__(self):

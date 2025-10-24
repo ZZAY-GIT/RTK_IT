@@ -5,6 +5,8 @@ from fastapi.security import OAuth2PasswordRequestForm
 from auth.auth_service import auth_service
 from typing import List, Dict
 from pydantic import BaseModel
+from datetime import datetime
+from typing import Optional
 import json
 
 db = DataBaseManager(settings.CONN_STR)
@@ -65,16 +67,22 @@ def receive_robot_data(data: RobotData):
     else: 
         return {"status": "failed", "message": "Data not received"}
     
-@app.get("/api/inventory/history")
-async def get_history():
-    history = db.get_last_day_inventory_history()
-    return history
-
 @app.get("/api/dashboard/current")
-async def get_current_data():
+def get_current_data():
     data = db.get_current_state()
     return data
 
+@app.get("/api/inventory/history")
+def get_inventory_history(
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None, 
+    zone: Optional[str] = None,
+    status: Optional[str] = None
+):
+    from_dt = datetime.fromisoformat(from_date) if from_date else None
+    to_dt = datetime.fromisoformat(to_date) if to_date else None
+    result = db.get_filter_inventory_history(from_date=from_dt, to_date=to_dt, zone=zone, status=status)
+    return result
 
 if __name__ == "__main__":
     import uvicorn
