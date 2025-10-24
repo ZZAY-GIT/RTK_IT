@@ -19,3 +19,8 @@
     transform: translateY(0);
   }
 }
+
+html.dark {
+  background-color: #1f2937; /* gray-900 */
+  color: #f3f4f6; /* gray-100 */
+}

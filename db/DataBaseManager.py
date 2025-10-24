@@ -1,5 +1,5 @@
 
-from db.models import Base, User, Robot, Product, InventoryHistory, AIPrediction
+from DB.models import Base, User, Robot, Product, InventoryHistory, AIPrediction
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, func
 import logging

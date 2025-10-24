@@ -1,54 +1,61 @@
 import { useState } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import Login from './pages/Login';           // Исправлено
+import { Provider } from 'react-redux';
+import { store } from './store';
+import { useAuth } from './hooks/useAuth';
+import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import History from './pages/History';
-import { useAuth } from './hooks/useAuth';
+import Admin from './pages/Admin';
+import CSVUploadModal from './components/CSVUploadModal';
 
-// Защищённый роут
-function ProtectedRoute({ children }) {
+function ProtectedRoute({ children, adminOnly = false }) {
   const { user } = useAuth();
-  return user ? children : <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/login" />;
+  if (adminOnly && user.role !== 'operator') return <Navigate to="/dashboard" />;
+  return children;
 }
 
 function App() {
   const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
 
   return (
-    <BrowserRouter>
-      <Routes>
-        {/* Публичный роут */}
-        <Route path="/login" element={<Login />} />
-
-        {/* Главная — редирект */}
-        <Route path="/" element={<Navigate to="/dashboard" replace />} />
-
-        {/* Защищённые роуты */}
-        <Route
-          path="/dashboard"
-          element={
-            <ProtectedRoute>
-              <Dashboard
-                isCSVModalOpen={isCSVModalOpen}
-                setIsCSVModalOpen={setIsCSVModalOpen}
-              />
-            </ProtectedRoute>
-          }
+    <Provider store={store}>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Dashboard onOpenCSVModal={() => setIsCSVModalOpen(true)} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/history"
+            element={
+              <ProtectedRoute>
+                <History onOpenCSVModal={() => setIsCSVModalOpen(true)} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              <ProtectedRoute adminOnly={true}>
+                <Admin onOpenCSVModal={() => setIsCSVModalOpen(true)} />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/" element={<Navigate to="/dashboard" />} />
+        </Routes>
+        <CSVUploadModal
+          isOpen={isCSVModalOpen}
+          onClose={() => setIsCSVModalOpen(false)}
         />
-
-        <Route
-          path="/history"
-          element={
-            <ProtectedRoute>
-              <History />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* 404 */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
-      </Routes>
-    </BrowserRouter>
+      </BrowserRouter>
+    </Provider>
   );
 }
 

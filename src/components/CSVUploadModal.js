@@ -3,6 +3,7 @@ import { useDispatch } from 'react-redux';
 import { useDropzone } from 'react-dropzone';
 import Papa from 'papaparse';
 import { uploadCSV } from '../store/warehouseSlice';
+import { UploadIcon } from '@heroicons/react/outline';
 
 function CSVUploadModal({ isOpen, onClose }) {
   const dispatch = useDispatch();
@@ -19,7 +20,7 @@ function CSVUploadModal({ isOpen, onClose }) {
       delimiter: ';',
       encoding: 'UTF-8',
     });
-    // Симуляция прогресса
+    // Simulate progress
     let progress = 0;
     const interval = setInterval(() => {
       progress += 10;
@@ -29,48 +30,59 @@ function CSVUploadModal({ isOpen, onClose }) {
     dispatch(uploadCSV(file));
   };
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({ onDrop, accept: '.csv' });
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: '.csv',
+  });
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
-      <div className="bg-white rounded-2xl p-6 w-full max-w-lg">
-        <h2 className="text-lg font-semibold mb-4">Загрузка данных инвентаризации</h2>
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6 w-full max-w-lg">
+        <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">
+          Загрузка данных инвентаризации
+        </h2>
         <div
           {...getRootProps()}
           className={`border-2 border-dashed p-6 rounded-lg text-center ${
-            isDragActive ? 'border-blue-600 bg-blue-50' : 'border-gray-300'
+            isDragActive
+              ? 'border-blue-600 dark:border-blue-400 bg-blue-50 dark:bg-blue-900/50'
+              : 'border-gray-300 dark:border-gray-600'
           }`}
         >
           <input {...getInputProps()} />
-          <p className="text-gray-600">
+          <p className="text-gray-600 dark:text-gray-300">
             Перетащите CSV файл сюда или нажмите для выбора
           </p>
-          <svg className="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-          </svg>
+          <UploadIcon className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-300" />
         </div>
-        <p className="text-sm text-gray-600 mt-2">
+        <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
           Формат: CSV с разделителем ";", кодировка: UTF-8<br />
           Обязательные колонки: product_id, product_name, quantity, zone, date
         </p>
         {previewData.length > 0 && (
           <div className="mt-4">
-            <h3 className="text-sm font-semibold">Предпросмотр (первые 5 строк):</h3>
+            <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-100">
+              Предпросмотр (первые 5 строк):
+            </h3>
             <table className="w-full text-sm mt-2">
               <thead>
-                <tr className="bg-gray-100">
+                <tr className="bg-gray-100 dark:bg-gray-700">
                   {Object.keys(previewData[0]).map((key, index) => (
-                    <th key={index} className="p-2 text-left">{key}</th>
+                    <th key={index} className="p-2 text-left text-gray-800 dark:text-gray-100">
+                      {key}
+                    </th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {previewData.map((row, index) => (
-                  <tr key={index} className="border-t">
+                  <tr key={index} className="border-t dark:border-gray-600">
                     {Object.values(row).map((value, i) => (
-                      <td key={i} className="p-2">{value}</td>
+                      <td key={i} className="p-2 text-gray-800 dark:text-gray-100">
+                        {value}
+                      </td>
                     ))}
                   </tr>
                 ))}
@@ -80,9 +92,9 @@ function CSVUploadModal({ isOpen, onClose }) {
         )}
         {uploadProgress > 0 && (
           <div className="mt-4">
-            <div className="w-full bg-gray-200 rounded-full h-2.5">
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2.5">
               <div
-                className="bg-blue-600 h-2.5 rounded-full"
+                className="bg-blue-600 dark:bg-blue-400 h-2.5 rounded-full"
                 style={{ width: `${uploadProgress}%` }}
               />
             </div>
@@ -91,13 +103,13 @@ function CSVUploadModal({ isOpen, onClose }) {
         <div className="mt-4 flex justify-end space-x-2">
           <button
             onClick={onClose}
-            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700"
+            className="bg-gray-600 dark:bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600"
           >
             Отмена
           </button>
           <button
             onClick={() => dispatch(uploadCSV(previewData))}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800"
           >
             Загрузить
           </button>

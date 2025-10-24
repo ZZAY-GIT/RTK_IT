@@ -37,6 +37,38 @@ export const fetchAIPredictions = createAsyncThunk(
   }
 );
 
+export const fetchProducts = createAsyncThunk(
+  'warehouse/fetchProducts',
+  async (filters) => {
+    const response = await axios.get('https://your-api.com/products', { params: filters });
+    return response.data;
+  }
+);
+
+export const addProduct = createAsyncThunk(
+  'warehouse/addProduct',
+  async (product) => {
+    const response = await axios.post('https://your-api.com/products', product);
+    return response.data;
+  }
+);
+
+export const updateProduct = createAsyncThunk(
+  'warehouse/updateProduct',
+  async ({ id, product }) => {
+    const response = await axios.put(`https://your-api.com/products/${id}`, product);
+    return response.data;
+  }
+);
+
+export const deleteProduct = createAsyncThunk(
+  'warehouse/deleteProduct',
+  async (id) => {
+    await axios.delete(`https://your-api.com/products/${id}`);
+    return id;
+  }
+);
+
 const warehouseSlice = createSlice({
   name: 'warehouse',
   initialState: {
@@ -45,6 +77,7 @@ const warehouseSlice = createSlice({
     recentScans: [],
     aiPredictions: [],
     historyData: [],
+    products: [],
     filters: {
       startDate: null,
       endDate: null,
@@ -80,6 +113,19 @@ const warehouseSlice = createSlice({
       })
       .addCase(uploadCSV.fulfilled, (state) => {
         state.loading = false;
+      })
+      .addCase(fetchProducts.fulfilled, (state, action) => {
+        state.products = action.payload;
+      })
+      .addCase(addProduct.fulfilled, (state, action) => {
+        state.products.push(action.payload);
+      })
+      .addCase(updateProduct.fulfilled, (state, action) => {
+        const index = state.products.findIndex(p => p.id === action.payload.id);
+        if (index !== -1) state.products[index] = action.payload;
+      })
+      .addCase(deleteProduct.fulfilled, (state, action) => {
+        state.products = state.products.filter(p => p.id !== action.payload);
       });
   },
 });

@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import { EnvelopeIcon } from '@heroicons/react/24/outline';
 import logo from '../logo.png';
 import { useAuth } from '../hooks/useAuth'; // ← Критично!
+import { useTheme } from '../hooks/useTheme';
+import { MailIcon, LockClosedIcon, SunIcon, MoonIcon } from '@heroicons/react/outline';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -11,6 +12,7 @@ function Login() {
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const { theme, toggleTheme } = useTheme();
 
   const navigate = useNavigate();
   const { setUser } = useAuth(); // ← Получаем setUser
@@ -75,21 +77,34 @@ function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 transform transition-all duration-300 hover:shadow-2xl">
+    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-gray-100 dark:from-gray-800 dark:to-gray-900 flex items-center justify-center p-4">
+      <div className="w-full max-w-md bg-white dark:bg-gray-800 rounded-2xl shadow-xl p-8 transform transition-all duration-300 hover:shadow-2xl">
+         {/* Кнопка переключения темы */}
+        <button
+          onClick={toggleTheme}
+          className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+          aria-label="Переключить тему"
+        >
+          {theme === 'light' ? (
+            <MoonIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+          ) : (
+            <SunIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+          )}
+        </button>
+        
         {/* Логотип */}
         <div className="flex justify-center mb-6">
-          <img src={logo} alt="Company Logo" className="h-12 w-auto" />
+          <img src={logo} alt="Company Logo" className="h-12 w-auto hover:opacity-80 transition-opacity duration-200" />
         </div>
 
         {/* Заголовок */}
-        <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800 dark:text-gray-100 text-center mb-6">
           Вход в систему
         </h2>
 
         {/* Ошибка */}
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm animate-fade-in">
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/50 border border-red-200 dark:border-red-700 text-red-700 dark:text-red-300 rounded-lg text-sm animate-fade-in">
             {error}
           </div>
         )}
@@ -97,42 +112,41 @@ function Login() {
         {/* Форма */}
         <form onSubmit={handleSubmit}>
           <div className="relative mb-5">
-            <EnvelopeIcon className="absolute h-5 w-5 text-gray-400 right-3 top-3.5" />
+            <MailIcon className="absolute h-5 w-5 text-gray-400 dark:text-gray-300 left-8 top-3.5" />
             <input
               type="email"
               placeholder="Введите email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full pl-16 pr-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-700 placeholder-gray-400"
-              required
+              className="w-full pl-16 pr-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-gray-700 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-300"
             />
           </div>
 
-          <div className="mb-5">
+          <div className="relative mb-5">
+            <LockClosedIcon className="absolute h-5 w-5 text-gray-400 dark:text-gray-300 left-8 top-3.5" />
             <input
               type="password"
               placeholder="Введите пароль"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-700 placeholder-gray-400"
-              required
+              className="w-full pl-16 pr-4 py-3 bg-gray-50 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent transition-all duration-200 text-gray-700 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-300"
             />
           </div>
-
           <div className="mb-6 flex items-center">
             <input
               type="checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+              className="h-4 w-4 text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600 rounded focus:ring-blue-500 dark:focus:ring-blue-400"
             />
-            <label className="ml-2 text-sm text-gray-600">Запомнить меня</label>
+            <label className="ml-2 text-sm text-gray-600 dark:text-gray-300">
+              Запомнить меня
+            </label>
           </div>
-
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 disabled:bg-blue-400 flex items-center justify-center transition-all duration-200 font-medium"
+            className="w-full bg-blue-600 dark:bg-blue-700 text-white py-3 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 disabled:bg-blue-400 dark:disabled:bg-blue-600 flex items-center justify-center transition-all duration-200 font-medium"
           >
             {isLoading && (
               <svg
@@ -157,11 +171,9 @@ function Login() {
             Войти
           </button>
         </form>
-
-        {/* Ссылка "Забыли пароль?" */}
         <a
           href="/forgot-password"
-          className="block text-center mt-4 text-sm text-blue-600 hover:underline transition-colors duration-200"
+          className="block text-center mt-4 text-sm text-blue-600 dark:text-blue-400 hover:underline transition-colors duration-200"
         >
           Забыли пароль?
         </a>
