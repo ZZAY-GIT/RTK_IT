@@ -2,8 +2,6 @@ from DB.models import Base, User, Robot, Product, InventoryHistory, AIPrediction
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine
 import logging
-from sqlalchemy.exc import IntegrityError
-from settings import settings
 import bcrypt
 
 class DataBaseManager:
@@ -66,7 +64,7 @@ class DataBaseManager:
             else:
                 logging.info(f"User with email {email} not found")
                 return None
-
+        
     def get_user_password(self, email: str) -> str | None:
         with self.DBSession() as _s:
             record = (
