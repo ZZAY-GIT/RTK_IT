@@ -1,3 +1,4 @@
+
 from DB.models import Base, User, Robot, Product, InventoryHistory, AIPrediction
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, func
@@ -6,6 +7,8 @@ from sqlalchemy.exc import IntegrityError
 from settings import settings
 from datetime import datetime, timedelta
 import bcrypt
+from datetime import datetime
+
 
 class DataBaseManager:
     def __init__(self, conn_str: str):
@@ -80,7 +83,7 @@ class DataBaseManager:
             return None
         record = record.password_hash
         return record
-    
+
     #Работа робота
     def add_robot_data(self, robot_data):
         with self.DBSession() as _s:
@@ -126,8 +129,51 @@ class DataBaseManager:
             return avg_battery
     
 
-db = DataBaseManager(settings.CONN_STR)
+    def add_robot(self, robot_id: str, status: str = "active", battery_level: int = 100):
+        with self.DBSession() as _s:
+            # Проверяем существование робота
+            existing_robot = _s.query(self.Robot).filter(self.Robot.id == robot_id).first()
 
+            if existing_robot:
+                logging.info(f"Robot with id {robot_id} already exists")
+                # Робот существует
+                return existing_robot
+
+            # Робот не существует - создаем нового
+            new_robot = self.Robot(
+                id=robot_id,
+                status=status,
+                battery_level=battery_level,
+                last_update=datetime.now(),
+            )
+            _s.add(new_robot)
+            try:
+                _s.commit()
+                _s.refresh(new_robot)
+                logging.info(f"Successfully created robot with id {robot_id}")
+                return new_robot
+
+            except IntegrityError:
+                _s.rollback()
+                logging.error(f"Failed to create robot with id {robot_id}: IntegrityError")
+                return None
+
+    def get_robot(self, robot_id: str):
+        with self.DBSession() as _s:
+            robot = _s.query(self.Robot).filter(self.Robot.id == robot_id).first()
+            if robot:
+                logging.info(f"Robot with id {robot_id} found")
+                return robot
+            else:
+                logging.info(f"Robot with id {robot_id} not found")
+                return None
+
+    def get_all_robots(self):
+        with self.DBSession() as _s:
+            robots = _s.query(self.Robot).all()
+            return robots
+
+db = DataBaseManager(settings.CONN_STR)
 
 def hash_password(password: str) -> bytes:
     password_bytes = password.encode('utf-8')
