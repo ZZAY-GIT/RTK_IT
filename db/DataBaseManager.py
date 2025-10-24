@@ -1,5 +1,5 @@
 
-from DB.models import Base, User, Robot, Product, InventoryHistory, AIPrediction
+from db.models import Base, User, Robot, Product, InventoryHistory, AIPrediction
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, func
 import logging
@@ -107,19 +107,97 @@ class DataBaseManager:
                 _s.rollback()
                 return False
         #self._commit_record(new_inventory_history)
+
+
+    def get_current_state(self):
+        """Получает текущее состояние для dashboard"""
+        with self.DBSession() as _s:
+            # Активные роботы
+            active_robots_count, total_robots = self.get_active_robots()
+
+            # Средний заряд батареи
+            avg_battery = self.average_battery_charge() or 0
+
+            # Проверено сегодня
+            today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+            scanned_today = _s.query(self.InventoryHistory) \
+                .filter(self.InventoryHistory.scanned_at >= today_start) \
+                .count()
+
+            # Критические остатки
+            critical_stocks = _s.query(self.InventoryHistory) \
+                .filter(self.InventoryHistory.status == 'CRITICAL') \
+                .filter(self.InventoryHistory.scanned_at >= today_start) \
+                .count()
+
+            # Последние сканирования (20 записей)
+            recent_scans = _s.query(self.InventoryHistory) \
+                .order_by(self.InventoryHistory.scanned_at.desc()) \
+                .limit(20) \
+                .all()
+
+            # Текущие роботы
+            robots = _s.query(self.Robot).all()
+
+            return {
+                "statistics": {
+                    "active_robots": active_robots_count,
+                    "total_robots": total_robots,
+                    "scanned_today": scanned_today,
+                    "critical_stocks": critical_stocks,
+                    "average_battery": round(avg_battery, 1)
+                },
+                "robots": [
+                    {
+                        "id": robot.id,
+                        "status": robot.status,
+                        "battery_level": robot.battery_level,
+                        "last_update": robot.last_update.isoformat() if robot.last_update else None,
+                        "current_zone": robot.current_zone,
+                        "current_row": robot.current_row,
+                        "current_shelf": robot.current_shelf
+                    }
+                    for robot in robots
+                ],
+                "recent_scans": [
+                    {
+                        "id": scan.id,
+                        "robot_id": scan.robot_id,
+                        "product_id": scan.product_id,
+                        "quantity": scan.quantity,
+                        "zone": scan.zone,
+                        "status": scan.status,
+                        "scanned_at": scan.scanned_at.isoformat() if scan.scanned_at else None
+                    }
+                    for scan in recent_scans
+                ]
+            }
     
     # Сводка работы роботов за последние 24 часа
-    def get_last_day_inventory_history(self, from_date, to_date, zone, row, shelf, product_id, status):
-        """
-        Возвращает историю инвентаризации:
-        - Если today=True: с 00:00 текущего дня (UTC)
-        - Если today=False: за последние 24 часа
-        """
+    def get_filter_inventory_history(self, from_date=None, to_date=None, zone=None, shelf=None, status=None,
+                                     category=None):  # Возвращает список json-ов
         with self.DBSession() as _s:
-            existing_inventory_history = _s.query(self.InventoryHistory) \
-                .filter(self.InventoryHistory.scanned_at >= 24).all()
-            return existing_inventory_history
-        
+            query = _s.query(InventoryHistory).join(Product, InventoryHistory.product_id == Product.id)
+
+            filters = [
+                (from_date, InventoryHistory.scanned_at >= from_date),
+                (to_date, InventoryHistory.scanned_at <= to_date),
+                (zone, InventoryHistory.zone == zone),
+                (shelf, InventoryHistory.shelf_number == shelf),
+                (category, Product.category == category),
+                (status, InventoryHistory.status == status)
+            ]
+
+            for value, condition in filters:
+                if value is not None:
+                    query = query.filter(condition)
+
+            fileter_history = []
+            for inv_his in query.all():
+                fileter_history.append(inv_his.convert_json())
+
+            return fileter_history
+
     # dashboard
     # Blok 2, функуциии распределить потом в удобном порядке
     # Сводка количества активных роботов, возвращает кортеж формата (n активных роботов, m всего роботов)

@@ -1,51 +1,59 @@
-from db.DataBaseManager import db, verify_password
-from api.api import app
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from datetime import datetime
+import asyncio
 import json
 
-# 1. Добавить пользователя (хеширование происходит внутри add_user)
-#db.add_user("ampleenkov.do@gmail.com", "123123123", "Daniil", "operator")
+# Импорт менеджера из твоего websocket_manager.py
+from api.websocket_manager import manager, send_robot_update, send_inventory_alert
 
-## 2. Проверить пароль через БД
-#password = db.get_user_password("ampleenkov.do@gmail.com")
-#print(password)
-#print(type(password))
-#if verify_password("123123123", password):
-#    print("Authentication successful!")
-#else:
-#    print("Authentication failed!")
-#
-#if __name__ == "__main__":
-#    import uvicorn
-#    uvicorn.run(app, host="0.0.0.0", port=8000)
-with open("C:\\RTK_IT\\api\\invent.json", "r", encoding="utf-8") as file:
-    data = json.load(file)
-    db.add_robot_data(data)
-    print(db.get_last_day_inventory_history())
+app = FastAPI(title="WebSocket Test API")
 
+# Фоновая задача для теста (без базы)
+async def periodic_test_updates():
+    while True:
+        message = {
+            "type": "robot_update",
+            "data": {
+                "robot_id": "R2D2",
+                "battery_level": 90,
+                "location": {"zone": "A", "row": 1, "shelf": 2},
+                "status": "active",
+                "last_update": datetime.now().isoformat() + "Z"
+            },
+            "timestamp": datetime.now().isoformat() + "Z"
+        }
+        await manager.broadcast(message)
+        await asyncio.sleep(5)
 
-# # 2. Проверить пароль через БД
-# password = db.get_user_password("ampleenkov.do@gmail.com")
-# print(password)
-# print(type(password))
-# if verify_password("123123123", password):
-#     print("Authentication successful!")
-# else:
-#     print("Authentication failed!")
+@app.on_event("startup")
+async def startup_event():
+    asyncio.create_task(periodic_test_updates())
 
-# from auth.auth_service import AuthService
-    
-# if __name__ == "__main__":
-#     db.add_user("ampleenkov.do@gmail.com", "123123123", "Daniil", "operator")
-#     auth = AuthService()
-#     s = auth.login("ampleenkov.do@gmail.com", "123123123")
-#     print(s)
+# WebSocket эндпоинт
+@app.websocket("/api/ws/dashboard")
+async def websocket_endpoint(websocket: WebSocket):
+    await manager.connect(websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            try:
+                command = json.loads(data)
+                if command.get("type") == "ping":
+                    await manager.send_personal_message({"type": "pong"}, websocket)
+            except json.JSONDecodeError:
+                pass
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
 
-# from AI.yandex_gpt_client import YandexGPTClient
-# import json
-# with open("AI/historicalData.json", "r", encoding="utf-8") as f:
-#     his = json.load(f)
-# with open("AI/inventoryData.json", "r", encoding="utf-8") as f:
-#     inv = json.load(f)
-# s = YandexGPTClient()
-# result = s.send_to_api(inv, his)
-# print(result)
+# Заглушки для остальных эндпоинтов (чтобы не падал import)
+@app.get("/api/dashboard/current")
+async def get_current_data():
+    return {"status": "ok", "message": "Test dashboard endpoint"}
+
+@app.get("/api/inventory/history")
+async def get_history():
+    return {"status": "ok", "message": "Test inventory endpoint"}
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8002)
