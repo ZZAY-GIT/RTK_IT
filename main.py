@@ -21,3 +21,21 @@ with open("C:\\RTK_IT\\api\\invent.json", "r", encoding="utf-8") as file:
     data = json.load(file)
     db.add_robot_data(data)
     print(db.get_last_day_inventory_history())
+
+
+# # 2. Проверить пароль через БД
+# password = db.get_user_password("ampleenkov.do@gmail.com")
+# print(password)
+# print(type(password))
+# if verify_password("123123123", password):
+#     print("Authentication successful!")
+# else:
+#     print("Authentication failed!")
+
+# from auth.auth_service import AuthService
+    
+# if __name__ == "__main__":
+#     db.add_user("ampleenkov.do@gmail.com", "123123123", "Daniil", "operator")
+#     auth = AuthService()
+#     s = auth.login("ampleenkov.do@gmail.com", "123123123")
+#     print(s)
