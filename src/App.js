@@ -1,14 +1,14 @@
 import { useState } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { Navigate } from 'react-router-dom';
-import Login from './pages/Login';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import Login from './pages/Login';           // Исправлено
 import Dashboard from './pages/Dashboard';
 import History from './pages/History';
-import CSVUploadModal from './components/CSVUploadModal';
+import { useAuth } from './hooks/useAuth';
 
+// Защищённый роут
 function ProtectedRoute({ children }) {
-  const token = localStorage.getItem('token');
-  return token ? children : <Navigate to="/login" />;
+  const { user } = useAuth();
+  return user ? children : <Navigate to="/login" replace />;
 }
 
 function App() {
@@ -17,15 +17,25 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Публичный роут */}
         <Route path="/login" element={<Login />} />
+
+        {/* Главная — редирект */}
+        <Route path="/" element={<Navigate to="/dashboard" replace />} />
+
+        {/* Защищённые роуты */}
         <Route
           path="/dashboard"
           element={
             <ProtectedRoute>
-              <Dashboard />
+              <Dashboard
+                isCSVModalOpen={isCSVModalOpen}
+                setIsCSVModalOpen={setIsCSVModalOpen}
+              />
             </ProtectedRoute>
           }
         />
+
         <Route
           path="/history"
           element={
@@ -34,12 +44,10 @@ function App() {
             </ProtectedRoute>
           }
         />
-        <Route path="/" element={<Navigate to="/dashboard" />} />
+
+        {/* 404 */}
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
-      <CSVUploadModal
-        isOpen={isCSVModalOpen}
-        onClose={() => setIsCSVModalOpen(false)}
-      />
     </BrowserRouter>
   );
 }
