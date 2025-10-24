@@ -1,4 +1,4 @@
-from DB.DataBaseManager import db, verify_password
+from db.DataBaseManager import db, verify_password
 from api.api import app
 import json
 

@@ -1,5 +1,5 @@
 from fastapi import FastAPI, Depends
-from DB.DataBaseManager import DataBaseManager
+from db.DataBaseManager import DataBaseManager
 from settings import settings
 from fastapi.security import OAuth2PasswordRequestForm
 from auth.auth_service import auth_service
