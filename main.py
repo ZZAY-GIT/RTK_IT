@@ -39,3 +39,13 @@ with open("C:\\RTK_IT\\api\\invent.json", "r", encoding="utf-8") as file:
 #     auth = AuthService()
 #     s = auth.login("ampleenkov.do@gmail.com", "123123123")
 #     print(s)
+
+# from AI.yandex_gpt_client import YandexGPTClient
+# import json
+# with open("AI/historicalData.json", "r", encoding="utf-8") as f:
+#     his = json.load(f)
+# with open("AI/inventoryData.json", "r", encoding="utf-8") as f:
+#     inv = json.load(f)
+# s = YandexGPTClient()
+# result = s.send_to_api(inv, his)
+# print(result)

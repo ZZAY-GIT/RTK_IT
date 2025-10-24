@@ -2,9 +2,6 @@ import json
 import httpx
 import re
 from settings import settings
-from typing import List, Dict
-from api import predict
-from pydantic import BaseModel
 
 class YandexGPTClient:
     def __init__(self, url=settings.YANDEX_URL, api_key=settings.YANDEX_API_KEY, model=settings.YANDEX_MODEL):
@@ -12,6 +9,7 @@ class YandexGPTClient:
         self.url = url
         self.model = model
         self.last_prediction = None
+        self.period_days = 7
 
     def send_to_ai(self, inventory_data, historical_data):
         prompt = f"""
@@ -47,7 +45,8 @@ class YandexGPTClient:
             result_text = response['result']['alternatives'][0]['message']['text']
             return result_text
 
-    def get_prediction(self, inventory_data, historical_data):
+    def get_prediction(self, inventory_data, historical_data, period_days):
+        self.period_days = period_days
         self.last_prediction = self.send_to_ai(inventory_data, historical_data)
         self.last_prediction = self.safe_parse_json(self.last_prediction)
         return self.last_prediction
@@ -56,14 +55,10 @@ class YandexGPTClient:
         if self.last_prediction:
             categories = self.last_prediction
         else:
-            categories = self.get_prediction(inventory_data, historical_data)
-
-        class PredictRequest(BaseModel):
-            period_days: int
-            categories: List[Dict]
+            categories = self.get_prediction(inventory_data, historical_data, self.period_days)
 
         request_data = {
-            "period_days": 7,
+            "period_days": self.period_days,
             "categories": categories
         }
         
@@ -81,8 +76,8 @@ class YandexGPTClient:
             clean = re.sub(r'^```([\s\S]*?)```$', r'\1', result_text)
             return json.loads(clean.strip())
         except (json.JSONDecodeError, KeyError) as e:
-            print(f"Ошибка парсинга JSON: {e}")
-            print(f"Сырой JSON: {json_str}")
+            # print(f"Ошибка парсинга JSON: {e}")
+            # print(f"Сырой JSON: {json_str}")
             return None
         
 
