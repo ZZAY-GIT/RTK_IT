@@ -1,37 +1,28 @@
 from datetime import datetime
 
 from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect
-from sqlalchemy.connectors import asyncio
-
-from db.DataBaseManager import DataBaseManager
+import asyncio
+from db.DataBaseManager import db
 from settings import settings
 from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.middleware.cors import CORSMiddleware
 from auth.auth_service import auth_service
 from typing import List, Dict
 from pydantic import BaseModel
 import json
-from api.websocket_manager import manager, send_robot_update, send_inventory_alert
+import logging
+from api.websocket_manager import ws_manager, ws_handler
 
-db = DataBaseManager(settings.CONN_STR)
 
-async def periodic_dashboard_updates():
-    "Фоновая задача для обновления статистики каждые 5 сек"
-    while True:
-        try:  # Получаем текущие данные из базы
-            current_data = db.get_current_state()
-
-            # Отправляем обновление через WebSocket
-            await manager.broadcast({
-                "type": "statistics_update",
-                "data": current_data,
-                "timestamp": datetime.now().isoformat() + "Z"
-            })
-
-        except Exception as e:
-            print(f"Error in periodic updates: {e}")
-
-        await asyncio.sleep(5)
 app = FastAPI(title="Simple FastAPI Service", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # или ["*"] для разработки
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 class PredictRequest(BaseModel):
     period_days: int
@@ -60,29 +51,39 @@ class RobotData(BaseModel):
     battery_level: float
     next_checkpoint: str
 
+@app.on_event("startup")
+async def startup_event():
+    """Запуск фоновых задач при старте приложения"""
+    logging.info("Starting application...")
+    
+    # Запускаем фоновую задачу для broadcast обновлений
+    asyncio.create_task(
+        ws_manager.broadcast_dashboard_updates(
+            interval=5  # Обновления каждые 3 секунды
+        )
+    )
+    
+    logging.info("WebSocket broadcast task started")
 
-@app.websocket("/api/ws/dashboard")
-async def websocket_endpoint(websocket: WebSocket):
-    await manager.connect(websocket)
-    try:
-        while True:
-            # Ожидаем сообщения от клиента (можно использовать для heartbeat)
-            data = await websocket.receive_text()
-            # Обрабатываем команды от клиента если нужно
-            try:
-                command = json.loads(data)
-                if command.get("type") == "ping":
-                    await manager.send_personal_message({"type": "pong"}, websocket)
-            except json.JSONDecodeError:
-                pass
 
-    except WebSocketDisconnect:
-        manager.disconnect(websocket)
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Очистка при остановке приложения"""
+    logging.info("Shutting down application...")
+    
+    # Закрываем все активные WebSocket соединения
+    for connection in ws_manager.active_connections[:]:
+        try:
+            await connection.close()
+        except:
+            pass
+    
+    logging.info("All WebSocket connections closed")
+
 
 @app.post("/api/auth/login")
 def login(form_data: OAuth2PasswordRequestForm = Depends()):
     return auth_service.login(form_data.username, form_data.password)
-
 
 @app.post("/api/ai/predict", response_model=PredictResponse)
 def predict(request: PredictRequest):
@@ -109,6 +110,7 @@ async def receive_robot_data(data: RobotData):
             "status": "active",
             "last_update": data.timestamp
         })
+
 @app.get("/api/inventory/history")
 async def get_history():
     # history = db.get_last_day_inventory_history()
@@ -119,6 +121,45 @@ async def get_history():
 async def get_current_data():
     data = db.get_current_state()
     return data
+
+
+@app.websocket("/api/ws/dashboard")
+async def websocket_dashboard(websocket: WebSocket):
+    """
+    WebSocket endpoint для real-time обновлений дашборда
+    
+    Клиент может отправлять:
+    - "ping" - проверка соединения
+    - {"type": "refresh"} - запросить немедленное обновление
+    - {"type": "subscribe"} - подписаться на обновления (по умолчанию)
+    
+    Сервер отправляет:
+    - {"type": "initial_data", "data": {...}} - при подключении
+    - {"type": "dashboard_update", "data": {...}} - периодические обновления
+    - {"type": "ping"} - проверка соединения
+    - {"type": "pong"} - ответ на ping от клиента
+    """
+    await ws_handler.handle_connection(websocket, db)
+
+
+@app.get("/api/ws/status")
+async def websocket_status():
+    """Получить статус WebSocket соединений"""
+    return {
+        "active_connections": ws_manager.get_connections_count(),
+        "status": "operational"
+    }
+
+
+# =============== Health Check ===============
+
+@app.get("/health")
+async def health_check():
+    """Проверка здоровья приложения"""
+    return {
+        "status": "healthy",
+        "websocket_connections": ws_manager.get_connections_count()
+    }
 
 
 if __name__ == "__main__":
