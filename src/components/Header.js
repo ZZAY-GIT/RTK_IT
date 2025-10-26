@@ -81,12 +81,12 @@ function Header({ onOpenCSVModal }) {
           >
             Исторические данные
           </Link>
-          {user?.role === 'operator' && (
+          {['operator', 'admin'].includes(user?.role) && (
             <Link
               to="/admin"
               className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition"
             >
-              Управление товарами
+              Панель администратора
             </Link>
           )}
         </div>

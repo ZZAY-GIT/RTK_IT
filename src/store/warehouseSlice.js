@@ -69,6 +69,77 @@ export const deleteProduct = createAsyncThunk(
   }
 );
 
+export const fetchUsers = createAsyncThunk(
+  'warehouse/fetchUsers',
+  async () => {
+    // Замените на ваш API
+    // const response = await axios.get('https://your-api.com/users');
+    // return response.data;
+    return [];
+  }
+);
+
+export const createUser = createAsyncThunk(
+  'warehouse/createUser',
+  async (userData) => {
+    // const response = await axios.post('https://your-api.com/users', userData);
+    // return response.data;
+    return userData;
+  }
+);
+
+export const updateUser = createAsyncThunk(
+  'warehouse/updateUser',
+  async (userData) => {
+    // const response = await axios.put(`https://your-api.com/users/${userData.id}`, userData);
+    // return response.data;
+    return userData;
+  }
+);
+
+export const deleteUser = createAsyncThunk(
+  'warehouse/deleteUser',
+  async (id) => {
+    // await axios.delete(`https://your-api.com/users/${id}`);
+    return id;
+  }
+);
+
+export const fetchRobots = createAsyncThunk(
+  'warehouse/fetchRobots',
+  async () => {
+    // const response = await axios.get('https://your-api.com/robots');
+    // return response.data;
+    return [];
+  }
+);
+
+export const createRobot = createAsyncThunk(
+  'warehouse/createRobot',
+  async (robotData) => {
+    // const response = await axios.post('https://your-api.com/robots', robotData);
+    // return response.data;
+    return robotData;
+  }
+);
+
+export const updateRobot = createAsyncThunk(
+  'warehouse/updateRobot',
+  async (robotData) => {
+    // const response = await axios.put(`https://your-api.com/robots/${robotData.robotId}`, robotData);
+    // return response.data;
+    return robotData;
+  }
+);
+
+export const deleteRobot = createAsyncThunk(
+  'warehouse/deleteRobot',
+  async (robotId) => {
+    // await axios.delete(`https://your-api.com/robots/${robotId}`);
+    return robotId;
+  }
+);
+
 const warehouseSlice = createSlice({
   name: 'warehouse',
   initialState: {
@@ -78,6 +149,7 @@ const warehouseSlice = createSlice({
     aiPredictions: [],
     historyData: [],
     products: [],
+    users: [],
     filters: {
       startDate: null,
       endDate: null,
@@ -121,11 +193,37 @@ const warehouseSlice = createSlice({
         state.products.push(action.payload);
       })
       .addCase(updateProduct.fulfilled, (state, action) => {
-        const index = state.products.findIndex(p => p.id === action.payload.id);
+        const index = state.products.findIndex((p) => p.id === action.payload.id);
         if (index !== -1) state.products[index] = action.payload;
       })
       .addCase(deleteProduct.fulfilled, (state, action) => {
-        state.products = state.products.filter(p => p.id !== action.payload);
+        state.products = state.products.filter((p) => p.id !== action.payload);
+      })
+      .addCase(fetchUsers.fulfilled, (state, action) => {
+        state.users = action.payload;
+      })
+      .addCase(createUser.fulfilled, (state, action) => {
+        state.users.push(action.payload);
+      })
+      .addCase(updateUser.fulfilled, (state, action) => {
+        const index = state.users.findIndex((user) => user.id === action.payload.id);
+        if (index !== -1) state.users[index] = action.payload;
+      })
+      .addCase(deleteUser.fulfilled, (state, action) => {
+        state.users = state.users.filter((user) => user.id !== action.payload);
+      })
+      .addCase(fetchRobots.fulfilled, (state, action) => {
+        state.robots = action.payload;
+      })
+      .addCase(createRobot.fulfilled, (state, action) => {
+        state.robots.push(action.payload);
+      })
+      .addCase(updateRobot.fulfilled, (state, action) => {
+        const index = state.robots.findIndex((robot) => robot.robotId === action.payload.robotId);
+        if (index !== -1) state.robots[index] = action.payload;
+      })
+      .addCase(deleteRobot.fulfilled, (state, action) => {
+        state.robots = state.robots.filter((robot) => robot.robotId !== action.payload);
       });
   },
 });

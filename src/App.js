@@ -12,7 +12,7 @@ import CSVUploadModal from './components/CSVUploadModal';
 function ProtectedRoute({ children, adminOnly = false }) {
   const { user } = useAuth();
   if (!user) return <Navigate to="/login" />;
-  if (adminOnly && user.role !== 'operator') return <Navigate to="/dashboard" />;
+  if (adminOnly && user.role !== 'operator' && user.role !== 'admin') return <Navigate to="/dashboard" />;
   return children;
 }
 
