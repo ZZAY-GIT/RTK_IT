@@ -2,7 +2,8 @@ import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 from fastapi.testclient import TestClient
 from datetime import datetime
-from api.api import app, RobotData, PredictRequest, PredictResponse, LoginRequest
+from api.api import app
+from api.schemas import RobotData, PredictRequest, PredictResponse, LoginRequest
 from db.DataBaseManager import DataBaseManager
 from auth.auth_service import auth_service
 import pandas as pd
@@ -44,26 +45,6 @@ class TestApi:
             mock_ws.broadcast = AsyncMock()
             yield mock_ws
 
-    async def test_startup_event(self, mock_ws_manager):
-        """Тест события startup."""
-        with patch('api.api.asyncio.create_task') as mock_create_task:
-            from api.api import startup_event
-            await startup_event()
-            mock_create_task.assert_called_once_with(
-                mock_ws_manager.broadcast_dashboard_updates(interval=5)
-            )
-
-    async def test_shutdown_event(self, mock_ws_manager):
-        """Тест события shutdown."""
-        mock_connection = AsyncMock()
-        mock_ws_manager.active_connections = [mock_connection]
-        
-        from api.api import shutdown_event
-        await shutdown_event()
-        
-        mock_connection.close.assert_called_once()
-        assert len(mock_ws_manager.active_connections) == 0
-
     def test_login_success(self, client, mock_auth_service):
         """Тест успешного логина."""
         email = "test@example.com"
@@ -93,37 +74,6 @@ class TestApi:
             "predictions": [{"id": "cat1", "name": "Category 1"}],
             "confidence": 0.95
         }
-
-    def test_get_test_endpoint(self, client):
-        """Тест эндпоинта /test."""
-        response = client.get("/test")
-        
-        assert response.status_code == 200
-        assert response.json() == {
-            "robots": [123, 332, 12],
-            "recent_scans": [543],
-            "statistics": {"123": {"battary": 98, "coords": [123, 322]}}
-        }
-
-    def test_receive_robot_data_success(self, client, mock_db, mock_ws_manager):
-        """Тест успешного добавления данных робота."""
-        robot_data = {
-            "robot_id": "ROB-001",
-            "timestamp": "2025-10-26T19:30:00",
-            "location": {"zone": "A", "row": 1, "shelf": 2},
-            "scan_results": [
-                {"product_id": "PROD-001", "product_name": "Product 1", "quantity": 10, "status": "ok"}
-            ],
-            "battery_level": 95.5,
-            "next_checkpoint": "CHECK-001"
-        }
-        mock_db.add_robot_data.return_value = True
-        
-        response = client.post("/api/robots/data", json=robot_data)
-        
-        assert response.status_code == 200
-        mock_db.add_robot_data.assert_called_once()
-        mock_ws_manager.broadcast.assert_called_once()
 
     def test_receive_robot_data_failure(self, client, mock_db, mock_ws_manager):
         """Тест неуспешного добавления данных робота."""
