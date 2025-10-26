@@ -181,31 +181,6 @@ class DataBaseManager:
                     for scan in recent_scans
                 ]
             }
-    
-    # Сводка работы роботов за последние 24 часа
-    def get_filter_inventory_history(self, from_date=None, to_date=None, zone=None, shelf=None, status=None,
-                                     category=None):  # Возвращает список json-ов
-        with self.DBSession() as _s:
-            query = _s.query(InventoryHistory).join(Product, InventoryHistory.product_id == Product.id)
-
-            filters = [
-                (from_date, InventoryHistory.scanned_at >= from_date),
-                (to_date, InventoryHistory.scanned_at <= to_date),
-                (zone, InventoryHistory.zone == zone),
-                (shelf, InventoryHistory.shelf_number == shelf),
-                (category, Product.category == category),
-                (status, InventoryHistory.status == status)
-            ]
-
-            for value, condition in filters:
-                if value is not None:
-                    query = query.filter(condition)
-
-            fileter_history = []
-            for inv_his in query.all():
-                fileter_history.append(inv_his.convert_json())
-
-            return fileter_history
 
     def add_robot_data_csv(self, robot_data):
         with self.DBSession() as _s:
