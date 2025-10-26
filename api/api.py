@@ -1,4 +1,5 @@
-from fastapi import FastAPI, Depends
+import pandas as pd
+from fastapi import FastAPI, Depends, UploadFile, File, HTTPException
 from db.DataBaseManager import DataBaseManager
 from settings import settings
 from fastapi.security import OAuth2PasswordRequestForm
@@ -7,7 +8,12 @@ from typing import List, Dict
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
+import io
+import logging
 import json
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 db = DataBaseManager(settings.CONN_STR)
 
@@ -67,6 +73,47 @@ def receive_robot_data(data: RobotData):
     else: 
         return {"status": "failed", "message": "Data not received"}
     
+@app.post("/api/inventory/import")
+def add_csv_file(file_csv: UploadFile = File(...)):
+    if not file_csv.filename.lower().endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Only CSV files are allowed")
+    
+    try:
+        # Читаем файл
+        contents = file_csv.file.read()
+        csv_text = contents.decode('utf-8')
+        
+        # Используем StringIO для pandas
+        df = pd.read_csv(io.StringIO(csv_text), delimiter=';')
+        records = df.to_dict('records')
+        
+        # Добавляем записи в БД
+        success_count = 0
+        for record in records:
+            try:
+                db.add_robot_data_csv(record)
+                success_count += 1
+            except Exception as e:
+                logger.error(f"Error with record {record}: {e}")
+                continue
+        
+        return {
+            "status": "success", 
+            "records_processed": success_count,
+            "total_records": len(records)
+        }
+        
+    except pd.errors.EmptyDataError:
+        raise HTTPException(status_code=400, detail="CSV file is empty")
+    except pd.errors.ParserError:
+        raise HTTPException(status_code=400, detail="Error parsing CSV file")
+    except Exception as e:
+        logger.error(f"CSV import error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+    finally:
+        file_csv.file.close()
+    
+
 @app.get("/api/dashboard/current")
 def get_current_data():
     data = db.get_current_state()

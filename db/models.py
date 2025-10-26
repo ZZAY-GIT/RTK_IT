@@ -43,7 +43,7 @@ class InventoryHistory(Base):
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     robot_id = Column(String(50), ForeignKey('robots.id'))
-    product_id = Column(String(50), ForeignKey('products.id'), ForeignKey('ai_predictions.product_id'))
+    product_id = Column(String(50), ForeignKey('products.id'))
     quantity = Column(Integer, nullable=False)
     zone = Column(String(10), nullable=False)
     row_number = Column(Integer)
@@ -76,4 +76,3 @@ class AIPrediction(Base):
     recommended_order = Column(Integer)
     confidence_score = Column(DECIMAL(3, 2))
     created_at = Column(DateTime, default=datetime.utcnow)
-    product = relationship("Product", backref="ai_predictions")

@@ -125,13 +125,32 @@ class DataBaseManager:
                 _s.rollback()
                 return False
         #self._commit_record(new_inventory_history)
-    
+    def add_robot_data_csv(self, robot_data):
+        with self.DBSession() as _s:
+            new_inventory_history = self.InventoryHistory(
+                robot_id=robot_data.get("robot_id", None),
+                zone=robot_data.get("zone", None),
+                row_number=robot_data.get("row", None),
+                shelf_number=robot_data.get("shelf", None),
+                product_id=robot_data.get("product_id", None),
+                quantity=robot_data.get("quantity", None),
+                status=robot_data.get("status", None),
+                scanned_at=robot_data.get("date", None)
+            )
+            _s.add(new_inventory_history)
+            try:
+                _s.commit()
+            except IntegrityError:
+                _s.rollback()
+        #self._commit_record(new_inventory_history)
+        
     # Сводка работы роботов по фильтрам
     def get_filter_inventory_history(self, from_date=None, to_date=None, zone=None, shelf=None, status=None, category=None):
+        
         with self.DBSession() as _s:
             # Базовый запрос для inventory_history
+            
             query = _s.query(InventoryHistory)
-
             # Применяем фильтры
             if from_date is not None:
                 query = query.filter(InventoryHistory.scanned_at >= from_date)
@@ -143,7 +162,6 @@ class DataBaseManager:
                 query = query.filter(InventoryHistory.shelf_number == shelf)
             if status is not None:
                 query = query.filter(InventoryHistory.status == status)
-
             fileter_history = []
 
             # Получаем все записи inventory_history
@@ -192,7 +210,7 @@ class DataBaseManager:
                     result_json['discrepancy'] = inv_his.quantity
 
                 fileter_history.append(result_json)
-
+                
             return fileter_history
         
     # dashboard

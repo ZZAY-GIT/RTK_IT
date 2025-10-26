@@ -22,7 +22,8 @@
     ],
     "battery_level": 100,
     "next_checkpoint": "A-2-1"
-}{
+}
+{
     "robot_id": "RB-005",
     "timestamp": "2025-10-23T17:23:20.360626Z",
     "location": {
