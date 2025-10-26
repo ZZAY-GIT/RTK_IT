@@ -2,7 +2,7 @@ from fastapi import HTTPException, status
 import jwt
 from datetime import datetime, timedelta
 from settings import settings
-from DB.DataBaseManager import db, verify_password
+from db.DataBaseManager import db, verify_password
 
 class AuthService:
     def __init__(self):
@@ -18,7 +18,7 @@ class AuthService:
         to_encode = {**data, "exp": expire}
         return jwt.encode(to_encode, self.JWT_SECRET, algorithm=self.ALGORITHM)
 
-    def login(self, email: str, password: str) -> dict:
+    def login(self, email: str, password: str) -> dict | None:
         # 1. Get hashed password
         hashed = self.get_user_password(email)
         if not hashed or not verify_password(password, hashed):
@@ -30,6 +30,9 @@ class AuthService:
 
         # 2. Get user
         user = db.get_user(email)
+
+        if not user:
+            return None
         
         # 3. Create JWT
         token = self.create_jwt_token({

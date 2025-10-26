@@ -1,4 +1,4 @@
-from DB.DataBaseManager import db
+from db.DataBaseManager import db
 from api.api import app
 import json
 

@@ -4,12 +4,21 @@ from settings import settings
 from fastapi.security import OAuth2PasswordRequestForm
 from auth.auth_service import auth_service
 from typing import List, Dict
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import json
 
 db = DataBaseManager(settings.CONN_STR)
 
 app = FastAPI(title="Simple FastAPI Service", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # или ["*"] для разработки
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 class PredictRequest(BaseModel):
     period_days: int
@@ -38,10 +47,13 @@ class RobotData(BaseModel):
     battery_level: float
     next_checkpoint: str
 
+class LoginRequest(BaseModel):
+    email: str
+    password: str
 
 @app.post("/api/auth/login")
-def login(form_data: OAuth2PasswordRequestForm = Depends()):
-    return auth_service.login(form_data.username, form_data.password)
+def login(form_data: LoginRequest):
+    return auth_service.login(form_data.email, form_data.password)
 
 
 @app.post("/api/ai/predict", response_model=PredictResponse)
