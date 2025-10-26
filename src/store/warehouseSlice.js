@@ -1,11 +1,11 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 
+// =============== Dashboard ===============
 export const fetchDashboardData = createAsyncThunk(
   'warehouse/fetchDashboardData',
   async () => {
-    // Замените на ваш API
-    const response = await axios.get('https://your-api.com/dashboard');
+    const response = await axios.get('http://localhost:8000/api/dashboard/current');
     return response.data;
   }
 );
@@ -13,8 +13,7 @@ export const fetchDashboardData = createAsyncThunk(
 export const fetchHistoryData = createAsyncThunk(
   'warehouse/fetchHistoryData',
   async (filters) => {
-    // Замените на ваш API
-    const response = await axios.get('https://your-api.com/history', { params: filters });
+    const response = await axios.get('http://localhost:8000/api/inventory/history', { params: filters });
     return response.data;
   }
 );
@@ -24,7 +23,7 @@ export const uploadCSV = createAsyncThunk(
   async (file) => {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await axios.post('https://your-api.com/upload-csv', formData);
+    const response = await axios.post('http://localhost:8000/upload-csv', formData);
     return response.data;
   }
 );
@@ -32,15 +31,16 @@ export const uploadCSV = createAsyncThunk(
 export const fetchAIPredictions = createAsyncThunk(
   'warehouse/fetchAIPredictions',
   async () => {
-    const response = await axios.get('https://your-api.com/ai-predictions');
+    const response = await axios.get('http://localhost:8000/api/ai/predict');
     return response.data;
   }
 );
 
+// =============== Products ===============
 export const fetchProducts = createAsyncThunk(
   'warehouse/fetchProducts',
   async (filters) => {
-    const response = await axios.get('https://your-api.com/products', { params: filters });
+    const response = await axios.get('http://localhost:8000/products', { params: filters });
     return response.data;
   }
 );
@@ -48,7 +48,7 @@ export const fetchProducts = createAsyncThunk(
 export const addProduct = createAsyncThunk(
   'warehouse/addProduct',
   async (product) => {
-    const response = await axios.post('https://your-api.com/products', product);
+    const response = await axios.post('http://localhost:8000/products', product);
     return response.data;
   }
 );
@@ -56,7 +56,7 @@ export const addProduct = createAsyncThunk(
 export const updateProduct = createAsyncThunk(
   'warehouse/updateProduct',
   async ({ id, product }) => {
-    const response = await axios.put(`https://your-api.com/products/${id}`, product);
+    const response = await axios.put(`http://localhost:8000/products/${id}`, product);
     return response.data;
   }
 );
@@ -64,81 +64,102 @@ export const updateProduct = createAsyncThunk(
 export const deleteProduct = createAsyncThunk(
   'warehouse/deleteProduct',
   async (id) => {
-    await axios.delete(`https://your-api.com/products/${id}`);
+    await axios.delete(`http://localhost:8000/products/${id}`);
     return id;
   }
 );
 
+// =============== Users ===============
 export const fetchUsers = createAsyncThunk(
   'warehouse/fetchUsers',
   async () => {
-    // Замените на ваш API
-    // const response = await axios.get('https://your-api.com/users');
-    // return response.data;
-    return [];
+    const response = await axios.get('http://localhost:8000/api/users');
+    return response.data;
   }
 );
 
 export const createUser = createAsyncThunk(
   'warehouse/createUser',
-  async (userData) => {
-    // const response = await axios.post('https://your-api.com/users', userData);
-    // return response.data;
-    return userData;
+  async (user) => {
+    const response = await axios.post('http://localhost:8000/api/users', user);
+    return response.data;
   }
 );
 
 export const updateUser = createAsyncThunk(
   'warehouse/updateUser',
-  async (userData) => {
-    // const response = await axios.put(`https://your-api.com/users/${userData.id}`, userData);
-    // return response.data;
-    return userData;
+  async ({ id, user }) => {
+    const response = await axios.put(`http://localhost:8000/api/users/${id}`, user);
+    return response.data;
   }
 );
 
 export const deleteUser = createAsyncThunk(
   'warehouse/deleteUser',
   async (id) => {
-    // await axios.delete(`https://your-api.com/users/${id}`);
+    await axios.delete(`http://localhost:8000/api/users/${id}`);
     return id;
   }
 );
 
+// =============== Robots ===============
 export const fetchRobots = createAsyncThunk(
   'warehouse/fetchRobots',
   async () => {
-    // const response = await axios.get('https://your-api.com/robots');
-    // return response.data;
-    return [];
+    const response = await axios.get('http://localhost:8000/api/robots');
+    return response.data;
   }
 );
 
 export const createRobot = createAsyncThunk(
   'warehouse/createRobot',
-  async (robotData) => {
-    // const response = await axios.post('https://your-api.com/robots', robotData);
-    // return response.data;
-    return robotData;
+  async (robot) => {
+    const response = await axios.post('http://localhost:8000/api/robots', robot);
+    return response.data;
   }
 );
 
 export const updateRobot = createAsyncThunk(
   'warehouse/updateRobot',
-  async (robotData) => {
-    // const response = await axios.put(`https://your-api.com/robots/${robotData.robotId}`, robotData);
-    // return response.data;
-    return robotData;
+  async ({ id, robot }) => {
+    const response = await axios.put(`http://localhost:8000/api/robots/${id}`, robot);
+    return response.data;
   }
 );
 
 export const deleteRobot = createAsyncThunk(
   'warehouse/deleteRobot',
-  async (robotId) => {
-    // await axios.delete(`https://your-api.com/robots/${robotId}`);
-    return robotId;
+  async (id) => {
+    await axios.delete(`http://localhost:8000/api/robots/${id}`);
+    return id;
   }
 );
+
+// Вспомогательная функция для преобразования данных роботов
+const transformRobotData = (robot) => ({
+  id: robot.id,
+  status: robot.status,
+  battery: robot.battery_level || 0, // преобразуем battery_level -> battery
+  lastUpdate: robot.last_update || new Date().toISOString(),
+  // Генерируем координаты на основе зоны/ряда/полки
+  x: robot.current_zone ? (robot.current_zone.charCodeAt(0) - 65) * 20 : 0,
+  y: robot.current_row ? (robot.current_row - 1) * 20 : 0,
+  current_zone: robot.current_zone,
+  current_row: robot.current_row,
+  current_shelf: robot.current_shelf
+});
+
+// Вспомогательная функция для преобразования данных сканирований
+const transformScanData = (scan) => ({
+  id: scan.id,
+  time: scan.scanned_at || new Date().toISOString(), // scanned_at -> time
+  robotId: scan.robot_id, // robot_id -> robotId
+  zone: scan.zone,
+  productId: scan.product_id,
+  productName: scan.product_name || `Product ${scan.product_id}`, // добавляем productName
+  quantity: scan.quantity || 0,
+  status: scan.status ? scan.status.toLowerCase() : 'unknown' // приводим к нижнему регистру
+});
 
 const warehouseSlice = createSlice({
   name: 'warehouse',
@@ -161,6 +182,13 @@ const warehouseSlice = createSlice({
     websocketStatus: 'disconnected',
     loading: false,
     error: null,
+    statistics: { // добавляем статистику
+      active_robots: 0,
+      total_robots: 0,
+      scanned_today: 0,
+      critical_stocks: 0,
+      average_battery: 0
+    }
   },
   reducers: {
     setFilters: (state, action) => {
@@ -169,13 +197,36 @@ const warehouseSlice = createSlice({
     setWebsocketStatus: (state, action) => {
       state.websocketStatus = action.payload;
     },
+    updateDashboardFromWebSocket: (state, action) => {
+      const data = action.payload;
+      
+      if (data.robots) {
+        state.robots = data.robots.map(transformRobotData);
+      }
+      if (data.recent_scans) {
+        state.recentScans = data.recent_scans.map(transformScanData);
+      }
+      if (data.statistics) {
+        state.statistics = data.statistics;
+      }
+      // zones пока не обрабатываем, так как их нет в данных бэкенда
+    },
   },
   extraReducers: (builder) => {
     builder
+      // Dashboard
       .addCase(fetchDashboardData.fulfilled, (state, action) => {
-        state.robots = action.payload.robots;
-        state.zones = action.payload.zones;
-        state.recentScans = action.payload.recentScans;
+        const data = action.payload;
+        
+        if (data.robots) {
+          state.robots = data.robots.map(transformRobotData);
+        }
+        if (data.recent_scans) {
+          state.recentScans = data.recent_scans.map(transformScanData);
+        }
+        if (data.statistics) {
+          state.statistics = data.statistics;
+        }
       })
       .addCase(fetchHistoryData.fulfilled, (state, action) => {
         state.historyData = action.payload;
@@ -186,6 +237,8 @@ const warehouseSlice = createSlice({
       .addCase(uploadCSV.fulfilled, (state) => {
         state.loading = false;
       })
+      
+      // Products
       .addCase(fetchProducts.fulfilled, (state, action) => {
         state.products = action.payload;
       })
@@ -193,12 +246,14 @@ const warehouseSlice = createSlice({
         state.products.push(action.payload);
       })
       .addCase(updateProduct.fulfilled, (state, action) => {
-        const index = state.products.findIndex((p) => p.id === action.payload.id);
+        const index = state.products.findIndex(p => p.id === action.payload.id);
         if (index !== -1) state.products[index] = action.payload;
       })
       .addCase(deleteProduct.fulfilled, (state, action) => {
-        state.products = state.products.filter((p) => p.id !== action.payload);
+        state.products = state.products.filter(p => p.id !== action.payload);
       })
+      
+      // Users
       .addCase(fetchUsers.fulfilled, (state, action) => {
         state.users = action.payload;
       })
@@ -206,27 +261,29 @@ const warehouseSlice = createSlice({
         state.users.push(action.payload);
       })
       .addCase(updateUser.fulfilled, (state, action) => {
-        const index = state.users.findIndex((user) => user.id === action.payload.id);
+        const index = state.users.findIndex(u => u.id === action.payload.id);
         if (index !== -1) state.users[index] = action.payload;
       })
       .addCase(deleteUser.fulfilled, (state, action) => {
-        state.users = state.users.filter((user) => user.id !== action.payload);
+        state.users = state.users.filter(u => u.id !== action.payload);
       })
+      
+      // Robots
       .addCase(fetchRobots.fulfilled, (state, action) => {
-        state.robots = action.payload;
+        state.robots = action.payload.map(transformRobotData);
       })
       .addCase(createRobot.fulfilled, (state, action) => {
-        state.robots.push(action.payload);
+        state.robots.push(transformRobotData(action.payload));
       })
       .addCase(updateRobot.fulfilled, (state, action) => {
-        const index = state.robots.findIndex((robot) => robot.robotId === action.payload.robotId);
-        if (index !== -1) state.robots[index] = action.payload;
+        const index = state.robots.findIndex(r => r.id === action.payload.id);
+        if (index !== -1) state.robots[index] = transformRobotData(action.payload);
       })
       .addCase(deleteRobot.fulfilled, (state, action) => {
-        state.robots = state.robots.filter((robot) => robot.robotId !== action.payload);
+        state.robots = state.robots.filter(r => r.id !== action.payload);
       });
   },
 });
 
-export const { setFilters, setWebsocketStatus } = warehouseSlice.actions;
+export const { setFilters, setWebsocketStatus, updateDashboardFromWebSocket } = warehouseSlice.actions;
 export default warehouseSlice.reducer;

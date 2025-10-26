@@ -1,22 +1,15 @@
 from datetime import datetime
 
-from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect
 import asyncio
 from db.DataBaseManager import db
 import pandas as pd
-from fastapi import FastAPI, Depends, UploadFile, File, HTTPException
-from settings import settings
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi import FastAPI, UploadFile, File, HTTPException, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from auth.auth_service import auth_service
 from typing import List, Dict
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from datetime import datetime
 from typing import Optional
 import io
-import logging
-import json
 import logging
 from api.websocket_manager import ws_manager, ws_handler
 
@@ -121,12 +114,6 @@ async def receive_robot_data(data: RobotData):
             "last_update": data.timestamp
         })
 
-@app.get("/api/inventory/history")
-async def get_history():
-    # history = db.get_last_day_inventory_history()
-    # return history
-    return {"status": "success", "message": "Data received"}
-
     
 @app.post("/api/inventory/import")
 def add_csv_file(file_csv: UploadFile = File(...)):
@@ -149,7 +136,7 @@ def add_csv_file(file_csv: UploadFile = File(...)):
                 db.add_robot_data_csv(record)
                 success_count += 1
             except Exception as e:
-                logger.error(f"Error with record {record}: {e}")
+                logging.error(f"Error with record {record}: {e}")
                 continue
         
         return {
@@ -163,7 +150,7 @@ def add_csv_file(file_csv: UploadFile = File(...)):
     except pd.errors.ParserError:
         raise HTTPException(status_code=400, detail="Error parsing CSV file")
     except Exception as e:
-        logger.error(f"CSV import error: {e}")
+        logging.error(f"CSV import error: {e}")
         raise HTTPException(status_code=500, detail="Internal server error")
     finally:
         file_csv.file.close()
@@ -212,7 +199,7 @@ async def websocket_dashboard(websocket: WebSocket):
     - {"type": "ping"} - проверка соединения
     - {"type": "pong"} - ответ на ping от клиента
     """
-    await ws_handler.handle_connection(websocket, db)
+    await ws_handler.handle_connection(websocket)
 
 
 @app.get("/api/ws/status")

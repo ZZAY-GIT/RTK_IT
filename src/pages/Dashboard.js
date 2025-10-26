@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
-import { fetchDashboardData, fetchAIPredictions, setWebsocketStatus } from '../store/warehouseSlice';
+import { fetchDashboardData, fetchAIPredictions } from '../store/warehouseSlice';
 import Header from '../components/Header';
 import { useTheme } from '../hooks/useTheme';
+import { useWarehouseWebSocket } from '../hooks/useWarehouseWebSocket'; // 🆕 ДОБАВИЛИ
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -15,23 +16,18 @@ function Dashboard({ onOpenCSVModal }) {
   const [scale, setScale] = useState(1);
   const [pauseUpdates, setPauseUpdates] = useState(false);
 
+  // 🆕 Подключаем WebSocket (отключается когда pauseUpdates = true)
+  useWarehouseWebSocket(!pauseUpdates);
+
   useEffect(() => {
-    //dispatch(fetchDashboarData());
+    // Загружаем начальные данные один раз
+    dispatch(fetchDashboardData());
     dispatch(fetchAIPredictions());
-    const ws = new WebSocket('wss://your-websocket-api.com');
-    ws.onopen = () => dispatch(setWebsocketStatus('connected'));
-    ws.onclose = () => dispatch(setWebsocketStatus('disconnected'));
-    ws.onerror = () => dispatch(setWebsocketStatus('reconnecting'));
-
-    const interval = setInterval(() => {
-      if (!pauseUpdates) dispatch(fetchDashboardData());
-    }, 5000);
-
-    return () => {
-      ws.close();
-      clearInterval(interval);
-    };
-  }, [dispatch, pauseUpdates]);
+    
+    // ❌ УДАЛИЛИ весь старый код WebSocket и polling
+    // Теперь данные обновляются автоматически через WebSocket!
+    
+  }, [dispatch]); // 🆕 УБРАЛИ pauseUpdates из зависимостей
 
   const chartData = {
     labels: ['-60min', '-50min', '-40min', '-30min', '-20min', '-10min', 'Now'],
@@ -39,7 +35,7 @@ function Dashboard({ onOpenCSVModal }) {
       {
         label: 'Активность роботов',
         data: [10, 15, 12, 18, 20, 17, 22],
-        borderColor: theme === 'dark' ? 'rgba(147, 197, 253, 1)' : 'rgba(59, 130, 246, 1)', // blue-300 в темном, blue-500 в светлом
+        borderColor: theme === 'dark' ? 'rgba(147, 197, 253, 1)' : 'rgba(59, 130, 246, 1)',
         backgroundColor: theme === 'dark' ? 'rgba(147, 197, 253, 0.2)' : 'rgba(59, 130, 246, 0.2)',
         fill: false,
       },
@@ -50,7 +46,7 @@ function Dashboard({ onOpenCSVModal }) {
     plugins: {
       legend: {
         labels: {
-          color: theme === 'dark' ? '#f3f4f6' : '#1f2937', // gray-100 в темном, gray-900 в светлом
+          color: theme === 'dark' ? '#f3f4f6' : '#1f2937',
         },
       },
       title: {
@@ -63,7 +59,7 @@ function Dashboard({ onOpenCSVModal }) {
           color: theme === 'dark' ? '#f3f4f6' : '#1f2937',
         },
         grid: {
-          color: theme === 'dark' ? '#4b5563' : '#e5e7eb', // gray-600 в темном, gray-200 в светлом
+          color: theme === 'dark' ? '#4b5563' : '#e5e7eb',
         },
       },
       y: {
@@ -83,9 +79,32 @@ function Dashboard({ onOpenCSVModal }) {
       <div className="p-6 grid grid-cols-2 gap-6">
         {/* Блок 1: Карта склада */}
         <div className="p-6">
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-4">
-            Текущий мониторинг
-          </h2>
+          {/* 🆕 Улучшенный заголовок с индикатором */}
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
+              Текущий мониторинг
+            </h2>
+            {/* 🆕 Индикатор WebSocket статуса */}
+            <div className="flex items-center gap-2">
+              <div
+                className={`w-3 h-3 rounded-full ${
+                  websocketStatus === 'connected'
+                    ? 'bg-green-500 animate-pulse'
+                    : websocketStatus === 'reconnecting'
+                    ? 'bg-yellow-500 animate-pulse'
+                    : 'bg-red-500'
+                }`}
+              />
+              <span className="text-sm text-gray-600 dark:text-gray-300">
+                {websocketStatus === 'connected'
+                  ? 'Live'
+                  : websocketStatus === 'reconnecting'
+                  ? 'Переподключение...'
+                  : 'Офлайн'}
+              </span>
+            </div>
+          </div>
+          
           <div className="relative">
             <svg
               width="100%"
@@ -111,7 +130,7 @@ function Dashboard({ onOpenCSVModal }) {
                         ? 'yellow'
                         : 'red'
                     }
-                    stroke={theme === 'dark' ? '#6b7280' : 'gray'} // gray-500 в темном
+                    stroke={theme === 'dark' ? '#6b7280' : 'gray'}
                     strokeWidth="0.5"
                   />
                 ))
@@ -186,7 +205,9 @@ function Dashboard({ onOpenCSVModal }) {
               <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
                 <p className="text-sm text-gray-600 dark:text-gray-300">Средний заряд батарей</p>
                 <p className="text-xl font-bold text-gray-800 dark:text-gray-100">
-                  {Math.round(robots.reduce((sum, r) => sum + r.battery, 0) / robots.length)}%
+                  {robots.length > 0
+                    ? Math.round(robots.reduce((sum, r) => sum + r.battery, 0) / robots.length)
+                    : 0}%
                 </p>
               </div>
             </div>
@@ -280,25 +301,17 @@ function Dashboard({ onOpenCSVModal }) {
                   </p>
                 </div>
               ))}
-              <p className="text-sm text-gray-600 dark:text-gray-300">
-                Достоверность прогноза: {aiPredictions[0]?.confidence || 0}%
-              </p>
+              {aiPredictions.length > 0 && (
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  Достоверность прогноза: {aiPredictions[0]?.confidence || 0}%
+                </p>
+              )}
             </div>
           </div>
         </div>
       </div>
-      {/* WebSocket индикатор */}
-      <div className="fixed bottom-4 right-4">
-        <div
-          className={`w-4 h-4 rounded-full ${
-            websocketStatus === 'connected'
-              ? 'bg-green-500'
-              : websocketStatus === 'disconnected'
-              ? 'bg-red-500'
-              : 'bg-gray-500'
-          }`}
-        />
-      </div>
+      
+      {/* ❌ УДАЛИЛИ старый индикатор снизу справа */}
     </div>
   );
 }

@@ -20,6 +20,8 @@ dependencies = [
     "pydantic[email] (>=2.12.3,<3.0.0)",
     "python-multipart (>=0.0.20,<0.0.21)",
     "httpx (>=0.28.1,<0.29.0)",
+    "pandas (>=2.3.3,<3.0.0)",
+    "websockets (>=15.0.1,<16.0.0)",
 ]
 
 

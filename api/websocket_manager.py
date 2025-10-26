@@ -96,7 +96,7 @@ class WebSocketHandler:
     def __init__(self, manager: WebSocketConnectionManager):
         self.manager = manager
 
-    async def handle_connection(self, websocket: WebSocket, db):
+    async def handle_connection(self, websocket: WebSocket):
         """
         Обработать WebSocket соединение
         
@@ -173,6 +173,7 @@ class WebSocketHandler:
         if message_type == "refresh":
             # Клиент запросил обновление данных
             current_data = db.get_current_state()
+            print(current_data)
             await self.manager.send_personal_message(
                 {
                     "type": "dashboard_update",

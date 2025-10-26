@@ -143,7 +143,6 @@ class DataBaseManager:
             # Последние сканирования (20 записей)
             recent_scans = _s.query(self.InventoryHistory) \
                 .order_by(self.InventoryHistory.scanned_at.desc()) \
-                .limit(20) \
                 .all()
 
             # Текущие роботы
