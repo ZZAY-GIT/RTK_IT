@@ -42,8 +42,8 @@ class InventoryHistory(Base):
     __tablename__ = 'inventory_history'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    robot_id = Column(String(50))#, ForeignKey('robots.id'))
-    product_id = Column(String(50))#, ForeignKey('products.id'))
+    robot_id = Column(String(50), ForeignKey('robots.id'))
+    product_id = Column(String(50), ForeignKey('products.id'))
     quantity = Column(Integer, nullable=False)
     zone = Column(String(10), nullable=False)
     row_number = Column(Integer)
@@ -51,18 +51,28 @@ class InventoryHistory(Base):
     status = Column(String(50))
     scanned_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    #robot = relationship("Robot", backref="inventory_history")
-    #product = relationship("Product", backref="inventory_history")
+    product = relationship("Product", backref="inventory_history")
+
+    def convert_json(self):
+        data = {
+            'robot_id': self.robot_id,
+            'product_id': self.product_id,
+            'quantity': self.quantity,
+            'zone': self.zone,
+            'status': self.status,
+            'scanned_at': self.scanned_at.isoformat() if self.scanned_at else None
+        }
+        return data
+    robot = relationship("Robot", backref="inventory_history")
 
 
 class AIPrediction(Base):
     __tablename__ = 'ai_predictions'
     
     id = Column(Integer, primary_key=True, autoincrement=True)
-    product_id = Column(String(50))#, ForeignKey('products.id'))
+    product_id = Column(String(50), ForeignKey('products.id'))
     prediction_date = Column(Date, nullable=False)
     days_until_stockout = Column(Integer)
     recommended_order = Column(Integer)
     confidence_score = Column(DECIMAL(3, 2))
     created_at = Column(DateTime, default=datetime.utcnow)
-    #product = relationship("Product", backref="ai_predictions")

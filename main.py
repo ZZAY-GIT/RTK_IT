@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 from db.DataBaseManager import db
 from api.api import app
 import json
@@ -10,6 +11,14 @@ if __name__ == "__main__":
    import uvicorn
    uvicorn.run(app, host="192.168.1.65", port=8000)
 
+=======
+from db.DataBaseManager import db, verify_password
+from db.test_data import generate_test_data
+import io
+import pandas as pd
+from api.api import app
+from random import choice
+>>>>>>> dev/db
 
 # 1. Добавить пользователя (хеширование происходит внутри add_user)
 #db.add_user("ampleenkov.do@gmail.com", "123123123", "Daniil", "operator")
@@ -22,6 +31,7 @@ if __name__ == "__main__":
 #    print("Authentication successful!")
 #else:
 #    print("Authentication failed!")
+<<<<<<< HEAD
 #
 #if __name__ == "__main__":
 #    import uvicorn
@@ -58,3 +68,9 @@ if __name__ == "__main__":
 # s = YandexGPTClient()
 # result = s.send_to_api(inv, his)
 # print(result)
+=======
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
+>>>>>>> dev/db

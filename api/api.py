@@ -3,6 +3,8 @@ from datetime import datetime
 from fastapi import FastAPI, Depends, WebSocket, WebSocketDisconnect
 import asyncio
 from db.DataBaseManager import db
+import pandas as pd
+from fastapi import FastAPI, Depends, UploadFile, File, HTTPException
 from settings import settings
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,6 +12,10 @@ from auth.auth_service import auth_service
 from typing import List, Dict
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from datetime import datetime
+from typing import Optional
+import io
+import logging
 import json
 import logging
 from api.websocket_manager import ws_manager, ws_handler
@@ -119,13 +125,76 @@ async def receive_robot_data(data: RobotData):
 async def get_history():
     # history = db.get_last_day_inventory_history()
     # return history
-    return {"status": "ok", "message": "History endpoint stub for WebSocket testing"}
+    return {"status": "success", "message": "Data received"}
+
+    
+@app.post("/api/inventory/import")
+def add_csv_file(file_csv: UploadFile = File(...)):
+    if not file_csv.filename.lower().endswith('.csv'):
+        raise HTTPException(status_code=400, detail="Only CSV files are allowed")
+    
+    try:
+        # Читаем файл
+        contents = file_csv.file.read()
+        csv_text = contents.decode('utf-8')
+        
+        # Используем StringIO для pandas
+        df = pd.read_csv(io.StringIO(csv_text), delimiter=';')
+        records = df.to_dict('records')
+        
+        # Добавляем записи в БД
+        success_count = 0
+        for record in records:
+            try:
+                db.add_robot_data_csv(record)
+                success_count += 1
+            except Exception as e:
+                logger.error(f"Error with record {record}: {e}")
+                continue
+        
+        return {
+            "status": "success", 
+            "records_processed": success_count,
+            "total_records": len(records)
+        }
+        
+    except pd.errors.EmptyDataError:
+        raise HTTPException(status_code=400, detail="CSV file is empty")
+    except pd.errors.ParserError:
+        raise HTTPException(status_code=400, detail="Error parsing CSV file")
+    except Exception as e:
+        logger.error(f"CSV import error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error")
+    finally:
+        file_csv.file.close()
+    
 
 @app.get("/api/dashboard/current")
-async def get_current_data():
+def get_current_data():
     data = db.get_current_state()
     return data
 
+@app.get("/api/inventory/history")
+def get_inventory_history(
+    from_date: Optional[str] = None,
+    to_date: Optional[str] = None, 
+    zone: Optional[str] = None,
+    status: Optional[str] = None):
+    from_dt = datetime.fromisoformat(from_date) if from_date else None
+    to_dt = datetime.fromisoformat(to_date) if to_date else None
+    
+    items = db.get_filter_inventory_history(
+        from_date=from_dt, 
+        to_date=to_dt, 
+        zone=zone, 
+        status=status
+    )
+    
+    return {
+        "total": len(items),
+        "items": items,
+        "pagination": {}  # пустой объект, как в требовании
+    }
 
 @app.websocket("/api/ws/dashboard")
 async def websocket_dashboard(websocket: WebSocket):

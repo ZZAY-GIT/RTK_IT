@@ -75,6 +75,24 @@ class DataBaseManager:
             return None
         record = record.password_hash
         return record
+    
+    # Методы Product
+    def add_product(self,id, name, category, min_stock, optimal_stock):
+        with self.DBSession() as _s:
+            new_product = self.Product(
+                id=id,
+                name=name,
+                category=category,
+                min_stock=min_stock,
+                optimal_stock=optimal_stock
+            )
+            _s.add(new_product)
+            try:
+                _s.commit()
+                return True
+            except IntegrityError:
+                _s.rollback()
+                return False
 
     #Работа робота
     def add_robot_data(self, robot_data):
@@ -190,6 +208,94 @@ class DataBaseManager:
 
             return fileter_history
 
+    def add_robot_data_csv(self, robot_data):
+        with self.DBSession() as _s:
+            new_inventory_history = self.InventoryHistory(
+                robot_id=robot_data.get("robot_id", None),
+                zone=robot_data.get("zone", None),
+                row_number=robot_data.get("row", None),
+                shelf_number=robot_data.get("shelf", None),
+                product_id=robot_data.get("product_id", None),
+                quantity=robot_data.get("quantity", None),
+                status=robot_data.get("status", None),
+                scanned_at=robot_data.get("date", None)
+            )
+            _s.add(new_inventory_history)
+            try:
+                _s.commit()
+            except IntegrityError:
+                _s.rollback()
+        #self._commit_record(new_inventory_history)
+        
+    # Сводка работы роботов по фильтрам
+    def get_filter_inventory_history(self, from_date=None, to_date=None, zone=None, shelf=None, status=None, category=None):
+        
+        with self.DBSession() as _s:
+            # Базовый запрос для inventory_history
+            
+            query = _s.query(InventoryHistory)
+            # Применяем фильтры
+            if from_date is not None:
+                query = query.filter(InventoryHistory.scanned_at >= from_date)
+            if to_date is not None:
+                query = query.filter(InventoryHistory.scanned_at <= to_date)
+            if zone is not None:
+                query = query.filter(InventoryHistory.zone == zone)
+            if shelf is not None:
+                query = query.filter(InventoryHistory.shelf_number == shelf)
+            if status is not None:
+                query = query.filter(InventoryHistory.status == status)
+            fileter_history = []
+
+            # Получаем все записи inventory_history
+            inventory_records = query.all()
+
+            # Собираем все product_id для batch запроса к AI predictions
+            product_ids = [inv.product_id for inv in inventory_records if inv.product_id]
+
+            # Получаем все AI predictions для этих product_ids одним запросом
+            ai_predictions = {}
+            if product_ids:
+                predictions_query = _s.query(AIPrediction).filter(
+                    AIPrediction.product_id.in_(product_ids)
+                )
+
+                # Группируем predictions по product_id, берем последнее по дате
+                for pred in predictions_query:
+                    if pred.product_id not in ai_predictions:
+                        ai_predictions[pred.product_id] = pred
+                    else:
+                        # Если есть несколько predictions, берем самую свежую
+                        existing_pred = ai_predictions[pred.product_id]
+                        if pred.prediction_date and existing_pred.prediction_date:
+                            if pred.prediction_date > existing_pred.prediction_date:
+                                ai_predictions[pred.product_id] = pred
+
+            # Формируем результат
+            for inv_his in inventory_records:
+                result_json = {
+                    'robot_id': inv_his.robot_id,
+                    'product_id': inv_his.product_id,
+                    'quantity': inv_his.quantity,
+                    'zone': inv_his.zone,
+                    'status': inv_his.status,
+                    'scanned_at': inv_his.scanned_at.isoformat() if inv_his.scanned_at else None,
+                }
+
+                # Ищем AI предсказание для этого product_id
+                ai_pred = ai_predictions.get(inv_his.product_id)
+
+                if ai_pred:
+                    result_json['recommended_order'] = ai_pred.recommended_order
+                    result_json['discrepancy'] = abs(inv_his.quantity - ai_pred.recommended_order)
+                else:
+                    result_json['recommended_order'] = 0
+                    result_json['discrepancy'] = inv_his.quantity
+
+                fileter_history.append(result_json)
+                
+            return fileter_history
+        
     # dashboard
     # Blok 2, функуциии распределить потом в удобном порядке
     # Сводка количества активных роботов, возвращает кортеж формата (n активных роботов, m всего роботов)
