@@ -97,17 +97,42 @@ class DataBaseManager:
     #Работа робота
     def add_robot_data(self, robot_data):
         with self.DBSession() as _s:
+            robot_id = robot_data.get("robot_id", None)
+            robot = self.get_robot(robot_id)
+            battery_level = robot_data.get("battery_level", None)
+            if not robot:
+                robot_status = "active"
+                if battery_level < 20:
+                    robot_status = "low_battery"
+                elif battery_level == 0:
+                    robot_status = "inactive"
+                self.add_robot(robot_id, robot_status, battery_level)
             n = len(robot_data.get("scan_results"))
             for i in range(n):
+                robot_location = robot_data.get("location", None)
+                if robot_location:
+                    zone = robot_location.get("zone", None)
+                    row_number = robot_location.get("row", None)
+                    shelf_number = robot_location.get("shelf", None)
+                else:
+                    zone = None
+                    row_number = None
+                    shelf_number = None
+                scan_result = robot_data.get("scan_results", None)[i]
+                product_id  = scan_result.get("product_id", None)
+                quantity = scan_result.get("quantity", None)
+                status = scan_result.get("status", None)
+                timestamp = robot_data.get("timestamp", None)
+
                 new_inventory_history = self.InventoryHistory(
-                    robot_id=robot_data.get("robot_id", None),
-                    zone=robot_data.get("location", None).get("zone", None),
-                    row_number=robot_data.get("location", None).get("row", None),
-                    shelf_number=robot_data.get("location", None).get("shelf", None),
-                    product_id=robot_data.get("scan_results", None)[i].get("product_id", None),
-                    quantity=robot_data.get("scan_results", None)[i].get("quantity", None),
-                    status=robot_data.get("scan_results", None)[i].get("status", None),
-                    scanned_at=robot_data.get("timestamp", None)
+                    robot_id=robot_id,
+                    zone=zone,
+                    row_number=row_number,
+                    shelf_number=shelf_number,
+                    product_id=product_id,
+                    quantity=quantity,
+                    status=status,
+                    scanned_at=timestamp
                 )
                 _s.add(new_inventory_history)
             try:

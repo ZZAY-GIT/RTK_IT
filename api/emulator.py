@@ -76,7 +76,6 @@ class RobotEmulator:
             },
             "scan_results": self.generate_scan_data(),
             "battery_level": round(self.battery, 1),
-            "next_checkpoint": f"{self.current_zone}-{self.current_row}-{self.current_shelf + 1}"
         }
 
         try:
@@ -119,29 +118,19 @@ def test_single_robot():
 
 
 if __name__ == "__main__":
-    print("Выберите режим:")
-    print("1 - Тестовый режим (5 сообщений)")
-    print("2 - Бесконечный режим")
+    import threading
 
-    choice = input("Введите 1 или 2: ")
+    robots = [
+        RobotEmulator("RB-02222", "http://localhost:8000"),
+        RobotEmulator("RB-00224", "http://localhost:8000"),
+        RobotEmulator("RB-00333", "http://localhost:8000")
+    ]
 
-    if choice == "1":
-        test_single_robot()
-    else:
-        # Запускаем 3 роботов
-        import threading
+    for robot in robots:
+        thread = threading.Thread(target=robot.run)
+        thread.daemon = True
+        thread.start()
 
-        robots = [
-            RobotEmulator("RB-001", "http://localhost:8000"),
-            RobotEmulator("RB-002", "http://localhost:8000"),
-            RobotEmulator("RB-003", "http://localhost:8000")
-        ]
-
-        for robot in robots:
-            thread = threading.Thread(target=robot.run)
-            thread.daemon = True
-            thread.start()
-
-        # Держим программу активной
-        while True:
-            time.sleep(60)
+    # Держим программу активной
+    while True:
+        time.sleep(60)

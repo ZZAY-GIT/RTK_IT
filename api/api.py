@@ -102,17 +102,9 @@ def read_user(user_id: int | None = None):
     return state
 
 @app.post("/api/robots/data")
-async def receive_robot_data(data: RobotData):
+def receive_robot_data(data: dict):
     status = db.add_robot_data(data)
-    if status:
-        # Отправляем обновление через WebSocket
-        await send_robot_update({
-            "robot_id": data.robot_id,
-            "battery_level": data.battery_level,
-            "location": data.location.dict(),
-            "status": "active",
-            "last_update": data.timestamp
-        })
+    
 
     
 @app.post("/api/inventory/import")
@@ -160,6 +152,7 @@ def add_csv_file(file_csv: UploadFile = File(...)):
 def get_current_data():
     data = db.get_current_state()
     return data
+
 
 @app.get("/api/inventory/history")
 def get_inventory_history(
