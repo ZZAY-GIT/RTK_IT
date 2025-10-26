@@ -25,14 +25,6 @@ class DataBaseManager:
         self.InventoryHistory = InventoryHistory
         self.AIPrediction = AIPrediction
 
-    def _commit_record(self, record):
-        try:
-            with self.DBSession() as _s:
-                _s.add(record)
-                _s.commit()
-                logging.debug("Record added")
-        except Exception as e:
-            logging.error(f"Error adding record {e}")
 
     # Методы User
     def add_user(self, email: str, password: str, name: str, role: str):

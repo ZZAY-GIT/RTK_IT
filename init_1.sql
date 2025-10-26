@@ -52,7 +52,6 @@ CREATE TABLE inventory_history (
 CREATE TABLE ai_predictions (
     id SERIAL PRIMARY KEY,
     product_id VARCHAR(50) REFERENCES products(id),
-    prediction_date DATE NOT NULL,
     days_until_stockout INTEGER,
     recommended_order INTEGER,
     confidence_score DECIMAL(3,2),
