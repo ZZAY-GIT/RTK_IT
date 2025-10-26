@@ -1,6 +1,7 @@
 from db.DataBaseManager import db
 from api.api import app
 import json
+from api.api import app
 
 # 1. Добавить пользователя (хеширование происходит внутри add_user)
 db.add_user("ampleenkov.do@gmail.com", "123123123", "Daniil", "operator")

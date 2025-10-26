@@ -22,7 +22,6 @@ class RobotEmulator:
         ]
 
     def generate_scan_data(self):
-        """Генерация данных сканирования как в ТЗ"""
         scanned_products = random.sample(self.products, k=random.randint(1, 3))
         scan_results = []
 
@@ -65,7 +64,6 @@ class RobotEmulator:
             print(f"🔋 {self.robot_id} заряжается!")
 
     def send_data(self):
-        """Отправка данных на сервер в формате ТЗ"""
         import requests
 
         data = {
@@ -109,7 +107,6 @@ class RobotEmulator:
 
 
 def test_single_robot():
-    """Тестируем одного робота"""
     print("Тестируем одного робота...")
     robot = RobotEmulator("RB-001", "http://localhost:8000")
 
