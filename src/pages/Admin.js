@@ -82,9 +82,9 @@ function Admin({ onOpenCSVModal }) {
       user.email.toLowerCase().includes(userSearch.toLowerCase())
   );
   const filteredRobots = robotsData.filter(
-    (robot) =>
-      robot.robotId.toLowerCase().includes(robotSearch.toLowerCase()) ||
-      robot.zone.toLowerCase().includes(robotSearch.toLowerCase())
+  (robot) =>
+    (robot.id || '').toLowerCase().includes(robotSearch.toLowerCase()) ||  // Добавьте || '' для безопасности
+    (robot.zone || '').toLowerCase().includes(robotSearch.toLowerCase())
   );
 
   // Пагинация

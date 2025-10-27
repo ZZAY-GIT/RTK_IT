@@ -143,9 +143,9 @@ const transformRobotData = (robot) => ({
   lastUpdate: robot.last_update || new Date().toISOString(),
   // Генерируем координаты на основе зоны/ряда/полки
   x: robot.current_zone ? (robot.current_zone.charCodeAt(0) - 65) * 20 : 0,
-  y: robot.current_row ? (robot.current_row - 1) * 20 : 0,
-  current_zone: robot.current_zone,
-  current_row: robot.current_row,
+  y: robot.current_row ? (robot.current_row - 1) * 20 : 0 || 1,
+  current_zone: robot.current_zone || 'A',
+  current_row: robot.current_row || 1,
   current_shelf: robot.current_shelf
 });
 

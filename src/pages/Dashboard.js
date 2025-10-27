@@ -6,6 +6,7 @@ import { fetchDashboardData, fetchAIPredictions } from '../store/warehouseSlice'
 import Header from '../components/Header';
 import { useTheme } from '../hooks/useTheme';
 import { useWarehouseWebSocket } from '../hooks/useWarehouseWebSocket'; // 🆕 ДОБАВИЛИ
+import InteractiveWarehouseMap from '../components/InteractiveWarehouseMap';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
 
@@ -14,10 +15,8 @@ function Dashboard({ onOpenCSVModal }) {
   const { robots, zones, recentScans, aiPredictions, websocketStatus } = useSelector((state) => state.warehouse);
   const { theme } = useTheme();
   const [scale, setScale] = useState(1);
-  const [pauseUpdates, setPauseUpdates] = useState(false);
 
-  // 🆕 Подключаем WebSocket (отключается когда pauseUpdates = true)
-  useWarehouseWebSocket(!pauseUpdates);
+  useWarehouseWebSocket();
 
   useEffect(() => {
     // Загружаем начальные данные один раз
@@ -27,7 +26,7 @@ function Dashboard({ onOpenCSVModal }) {
     // ❌ УДАЛИЛИ весь старый код WebSocket и polling
     // Теперь данные обновляются автоматически через WebSocket!
     
-  }, [dispatch]); // 🆕 УБРАЛИ pauseUpdates из зависимостей
+  }, [dispatch]);
 
   const chartData = {
     labels: ['-60min', '-50min', '-40min', '-30min', '-20min', '-10min', 'Now'],
@@ -73,18 +72,20 @@ function Dashboard({ onOpenCSVModal }) {
     },
   };
 
+
+
+
+  
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <Header onOpenCSVModal={onOpenCSVModal} />
       <div className="p-6 grid grid-cols-2 gap-6">
         {/* Блок 1: Карта склада */}
-        <div className="p-6">
-          {/* 🆕 Улучшенный заголовок с индикатором */}
-          <div className="flex justify-between items-center mb-4">
+        <div className="flex flex-col h-full">
+          <div className="flex justify-between items-center mb-4 px-6 pt-6">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
               Текущий мониторинг
             </h2>
-            {/* 🆕 Индикатор WebSocket статуса */}
             <div className="flex items-center gap-2">
               <div
                 className={`w-3 h-3 rounded-full ${
@@ -104,81 +105,17 @@ function Dashboard({ onOpenCSVModal }) {
               </span>
             </div>
           </div>
-          
-          <div className="relative">
-            <svg
-              width="100%"
-              height="400"
-              viewBox={`0 0 ${26 * 20 * scale} ${50 * 20 * scale}`}
-              className="border border-gray-300 dark:border-gray-600"
-            >
-              {/* Сетка зон */}
-              {Array.from({ length: 26 }).map((_, col) =>
-                Array.from({ length: 50 }).map((_, row) => (
-                  <rect
-                    key={`${String.fromCharCode(65 + col)}${row + 1}`}
-                    x={col * 20 * scale}
-                    y={row * 20 * scale}
-                    width={20 * scale}
-                    height={20 * scale}
-                    fill={
-                      zones.find((z) => z.id === `${String.fromCharCode(65 + col)}${row + 1}`)
-                        ?.status === 'recent'
-                        ? 'green'
-                        : zones.find((z) => z.id === `${String.fromCharCode(65 + col)}${row + 1}`)
-                            ?.status === 'needs_check'
-                        ? 'yellow'
-                        : 'red'
-                    }
-                    stroke={theme === 'dark' ? '#6b7280' : 'gray'}
-                    strokeWidth="0.5"
-                  />
-                ))
-              )}
-              {/* Роботы */}
-              {robots.map((robot) => (
-                <g key={robot.id} transform={`translate(${robot.x * scale}, ${robot.y * scale})`}>
-                  <circle
-                    cx={10 * scale}
-                    cy={10 * scale}
-                    r={5 * scale}
-                    fill={
-                      robot.status === 'active'
-                        ? 'green'
-                        : robot.status === 'low_battery'
-                        ? 'yellow'
-                        : 'red'
-                    }
-                  />
-                  <title>{`ID: ${robot.id}, Батарея: ${robot.battery}%, Обновлено: ${robot.lastUpdate}`}</title>
-                </g>
-              ))}
-            </svg>
-            <div className="absolute top-2 right-2 flex space-x-2">
-              <button
-                onClick={() => setScale((s) => s * 1.2)}
-                className="bg-blue-600 dark:bg-blue-700 text-white px-2 py-1 rounded hover:bg-blue-700 dark:hover:bg-blue-800"
-              >
-                +
-              </button>
-              <button
-                onClick={() => setScale((s) => s / 1.2)}
-                className="bg-blue-600 dark:bg-blue-700 text-white px-2 py-1 rounded hover:bg-blue-700 dark:hover:bg-blue-800"
-              >
-                -
-              </button>
-              <button
-                onClick={() => setScale(1)}
-                className="bg-blue-600 dark:bg-blue-700 text-white px-2 py-1 rounded hover:bg-blue-700 dark:hover:bg-blue-800"
-              >
-                Центр
-              </button>
-            </div>
+          <div className="flex-grow bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <InteractiveWarehouseMap
+              zones={zones}
+              robots={robots}
+              theme={theme}
+            />
           </div>
         </div>
 
         {/* Блок 2: Статистика */}
-        <div className="col-span-1 space-y-4">
+        <div className="col-span-1 space-y-4 h-full">
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-4">
             <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">
               Статистика в реальном времени
@@ -220,12 +157,6 @@ function Dashboard({ onOpenCSVModal }) {
               <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                 Последние сканирования
               </h2>
-              <button
-                onClick={() => setPauseUpdates(!pauseUpdates)}
-                className="bg-blue-600 dark:bg-blue-700 text-white px-3 py-1 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800"
-              >
-                {pauseUpdates ? 'Возобновить' : 'Пауза'}
-              </button>
             </div>
             <div className="overflow-y-auto max-h-64">
               <table className="w-full text-sm">
