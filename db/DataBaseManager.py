@@ -50,6 +50,27 @@ class DataBaseManager:
                 _s.rollback()
                 logging.error(f"Failed to create user with email {email}: IntegrityError")
                 return None
+            
+    def add_ai_prediction(self, data_ai_prediction):
+        with self.DBSession() as _s:
+            new_ai_predictionc = self.AIPrediction(
+                product_id = data_ai_prediction["product_id"],
+                recommended_order = data_ai_prediction["recommended_order"],
+                days_until_stockout = data_ai_prediction["days_until_stockout"],
+                confidence_score = 0.95,
+                prediction_date = datetime.now(),
+                created_at = datetime.now(),
+            )
+            _s.add(new_ai_predictionc)
+            try:
+                _s.commit()
+                logging.info(f"Successfully add new_ai_predictionc")
+                return new_ai_predictionc
+            except IntegrityError:
+                _s.rollback()
+                logging.error(f"Failed to create")
+                return None
+            
     
     def get_user(self, email: str):
         with self.DBSession() as _s:
