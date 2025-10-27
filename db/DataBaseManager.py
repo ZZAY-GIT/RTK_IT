@@ -561,5 +561,9 @@ def hash_password(password: str) -> bytes:
     return hashed
 
 def verify_password(password: str, hashed_password: bytes) -> bool:
-    password_bytes = password.encode('utf-8')
-    return bcrypt.checkpw(password_bytes, hashed_password)
+    try:
+        password_bytes = password.encode('utf-8')
+        return bcrypt.checkpw(password_bytes, hashed_password)
+    except (ValueError, TypeError) as e:
+        logging.error(f"Failed to verify password: {str(e)}")
+        return False

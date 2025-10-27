@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     YANDEX_URL: str = Field(default="https://llm.api.cloud.yandex.net/foundationModels/v1/completion", description="Yandex GPT API URL")
     YANDEX_MODEL: str = Field(default="gpt://b1grt4ckppkm30rupg8p/yandexgpt-lite", description="Yandex GPT model name")
     API_URL: str = Field(default="http://127.0.0.1:8000", description="Yandex GPT model name")
+    TEMPERATURE_MODEL: float = Field(default=0.1, description="Temperature model")
+    MAX_TOKENS: int = Field(default=2000, description="Max tokens")
 
 
 settings = Settings()

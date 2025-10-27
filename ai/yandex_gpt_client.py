@@ -2,16 +2,19 @@ import json
 import httpx
 import re
 from settings import settings
+from datetime import datetime
 
 class YandexGPTClient:
-    def __init__(self, url=settings.YANDEX_URL, api_key=settings.YANDEX_API_KEY, model=settings.YANDEX_MODEL):
+    def __init__(self, url=settings.YANDEX_URL, api_key=settings.YANDEX_API_KEY, model=settings.YANDEX_MODEL, temperature=settings.TEMPERATURE_MODEL, max_tokens=settings.MAX_TOKENS):
         self.api_key = api_key
         self.url = url
         self.model = model
         self.last_prediction = None
         self.period_days = 7
+        self.temperature = temperature
+        self.max_tokens = max_tokens
 
-    def send_to_ai(self, inventory_data, historical_data):
+    def send_to_ai(self, inventory_data, historical_data, temperature, max_tokens):
         prompt = f"""
         Analyze warehouse inventory data and predict stock levels for next 7 days.
         Current data: {json.dumps(inventory_data)}
@@ -30,8 +33,8 @@ class YandexGPTClient:
             "modelUri": self.model,
             "completionOptions": {
                 "stream": False,
-                "temperature": 0.1,
-                "maxTokens": 2000
+                "temperature": temperature,
+                "maxTokens": max_tokens
             },
             "messages": [
                 {"role": "system", "text": "You are a warehouse analysis assistant. Return ONLY a valid JSON array, no extra text or markdown."},
@@ -74,10 +77,12 @@ class YandexGPTClient:
             if "```json" in result_text:
                 result_text = result_text.replace("```json", "```")
             clean = re.sub(r'^```([\s\S]*?)```$', r'\1', result_text)
-            return json.loads(clean.strip())
+            data = json.loads(clean.strip())
+            if not isinstance(data, list):
+                return None  # Возвращаем None, если JSON не является списком
+            data.append({"created_at": datetime.now()})
+            return data
         except (json.JSONDecodeError, KeyError) as e:
-            # print(f"Ошибка парсинга JSON: {e}")
-            # print(f"Сырой JSON: {json_str}")
             return None
         
-
+yandex_client = YandexGPTClient()
