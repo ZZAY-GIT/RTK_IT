@@ -5,7 +5,7 @@ import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement
 import { fetchDashboardData, fetchAIPredictions } from '../store/warehouseSlice';
 import Header from '../components/Header';
 import { useTheme } from '../hooks/useTheme';
-import { useWarehouseWebSocket } from '../hooks/useWarehouseWebSocket'; // 🆕 ДОБАВИЛИ
+import { useWarehouseWebSocket } from '../hooks/useWarehouseWebSocket';
 import InteractiveWarehouseMap from '../components/InteractiveWarehouseMap';
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend);
@@ -14,68 +14,197 @@ function Dashboard({ onOpenCSVModal }) {
   const dispatch = useDispatch();
   const { robots, zones, recentScans, aiPredictions, websocketStatus } = useSelector((state) => state.warehouse);
   const { theme } = useTheme();
-  const [scale, setScale] = useState(1);
+  const [activityHistory, setActivityHistory] = useState([]);
 
   useWarehouseWebSocket();
 
   useEffect(() => {
-    // Загружаем начальные данные один раз
     dispatch(fetchDashboardData());
     dispatch(fetchAIPredictions());
-    
-    // ❌ УДАЛИЛИ весь старый код WebSocket и polling
-    // Теперь данные обновляются автоматически через WebSocket!
-    
   }, [dispatch]);
 
+  // Функция для форматирования даты в русском формате
+  const formatDateTime = (date) => {
+    return date.toLocaleString('ru-RU', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit'
+    });
+  };
+
+  // Обновляем историю активности каждые 10 минут
+  useEffect(() => {
+    const activeRobotsCount = robots.filter(r => r.status === 'active').length;
+    const now = new Date();
+    
+    setActivityHistory(prev => {
+      let newHistory = [...prev];
+      
+      // Добавляем новую точку данных
+      newHistory.push({
+        timestamp: now.getTime(), // Сохраняем timestamp для сортировки
+        timeDisplay: formatDateTime(now),
+        count: activeRobotsCount
+      });
+      
+      // Оставляем только данные за последний час (6 точек по 10 минут)
+      const oneHourAgo = now.getTime() - 60 * 60 * 1000;
+      newHistory = newHistory.filter(item => item.timestamp >= oneHourAgo);
+      
+      // Сортируем по времени
+      newHistory.sort((a, b) => a.timestamp - b.timestamp);
+      
+      return newHistory;
+    });
+  }, [robots]); // Обновляется при изменении роботов
+
+  // Автоматическое обновление каждые 10 минут (даже если данные не менялись)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const activeRobotsCount = robots.filter(r => r.status === 'active').length;
+      const now = new Date();
+      
+      setActivityHistory(prev => {
+        let newHistory = [...prev];
+        
+        // Добавляем новую точку данных
+        newHistory.push({
+          timestamp: now.getTime(),
+          timeDisplay: formatDateTime(now),
+          count: activeRobotsCount
+        });
+        
+        // Оставляем только данные за последний час
+        const oneHourAgo = now.getTime() - 60 * 60 * 1000;
+        newHistory = newHistory.filter(item => item.timestamp >= oneHourAgo);
+        
+        // Сортируем по времени
+        newHistory.sort((a, b) => a.timestamp - b.timestamp);
+        
+        return newHistory;
+      });
+    }, 10 * 60 * 1000); // 10 минут
+
+    return () => clearInterval(interval);
+  }, [robots]);
+
+  // Формируем данные для графика
   const chartData = {
-    labels: ['-60min', '-50min', '-40min', '-30min', '-20min', '-10min', 'Now'],
+    labels: activityHistory.map(item => {
+      // Форматируем для отображения на графике (только время для компактности)
+      const date = new Date(item.timestamp);
+      return date.toLocaleTimeString('ru-RU', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    }),
     datasets: [
       {
-        label: 'Активность роботов',
-        data: [10, 15, 12, 18, 20, 17, 22],
+        label: 'Активных роботов',
+        data: activityHistory.map(item => item.count),
         borderColor: theme === 'dark' ? 'rgba(147, 197, 253, 1)' : 'rgba(59, 130, 246, 1)',
         backgroundColor: theme === 'dark' ? 'rgba(147, 197, 253, 0.2)' : 'rgba(59, 130, 246, 0.2)',
-        fill: false,
+        fill: true,
+        tension: 0.4,
+        pointBackgroundColor: theme === 'dark' ? 'rgba(147, 197, 253, 1)' : 'rgba(59, 130, 246, 1)',
+        pointBorderColor: '#fff',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
       },
     ],
   };
 
   const chartOptions = {
+    responsive: true,
     plugins: {
       legend: {
+        position: 'top',
         labels: {
           color: theme === 'dark' ? '#f3f4f6' : '#1f2937',
+          usePointStyle: true,
         },
       },
-      title: {
-        color: theme === 'dark' ? '#f3f4f6' : '#1f2937',
+      tooltip: {
+        mode: 'index',
+        intersect: false,
+        backgroundColor: theme === 'dark' ? '#1f2937' : '#fff',
+        titleColor: theme === 'dark' ? '#f3f4f6' : '#1f2937',
+        bodyColor: theme === 'dark' ? '#f3f4f6' : '#1f2937',
+        borderColor: theme === 'dark' ? '#4b5563' : '#e5e7eb',
+        borderWidth: 1,
+        callbacks: {
+          title: (context) => {
+            // В тултипе показываем полную дату и время
+            const index = context[0].dataIndex;
+            return activityHistory[index].timeDisplay;
+          },
+          label: (context) => {
+            return `Активных роботов: ${context.parsed.y}`;
+          }
+        }
       },
+      title: {
+        display: true,
+        text: 'Активность роботов за последний час (обновление каждые 10 минут)',
+        color: theme === 'dark' ? '#f3f4f6' : '#1f2937',
+        font: {
+          size: 14
+        }
+      }
     },
     scales: {
       x: {
+        title: {
+          display: true,
+          text: 'Время',
+          color: theme === 'dark' ? '#f3f4f6' : '#1f2937',
+        },
         ticks: {
           color: theme === 'dark' ? '#f3f4f6' : '#1f2937',
+          maxRotation: 45,
+          callback: function(value, index) {
+            // Показываем время каждые 2 точки для лучшей читаемости
+            if (index % 2 === 0) {
+              return this.getLabelForValue(value);
+            }
+            return '';
+          }
         },
         grid: {
           color: theme === 'dark' ? '#4b5563' : '#e5e7eb',
         },
       },
       y: {
+        beginAtZero: true,
+        max: Math.max(robots.length, 1),
+        title: {
+          display: true,
+          text: 'Количество роботов',
+          color: theme === 'dark' ? '#f3f4f6' : '#1f2937',
+        },
         ticks: {
           color: theme === 'dark' ? '#f3f4f6' : '#1f2937',
+          stepSize: 1,
+          precision: 0
         },
         grid: {
           color: theme === 'dark' ? '#4b5563' : '#e5e7eb',
         },
       },
     },
+    interaction: {
+      mode: 'nearest',
+      axis: 'x',
+      intersect: false,
+    },
+    maintainAspectRatio: false,
   };
 
-
-
-
-  
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <Header onOpenCSVModal={onOpenCSVModal} />
@@ -148,10 +277,28 @@ function Dashboard({ onOpenCSVModal }) {
                 </p>
               </div>
             </div>
-            <Line data={chartData} options={chartOptions} />
+            
+            {/* График активности роботов */}
+            <div className="mt-6" style={{ height: '300px' }}>
+              <h3 className="text-md font-semibold mb-3 text-gray-800 dark:text-gray-100">
+                Активность роботов за последний час
+              </h3>
+              {activityHistory.length > 0 ? (
+                <Line data={chartData} options={chartOptions} />
+              ) : (
+                <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                  <p>Сбор данных для графика...</p>
+                  <p className="text-sm mt-2">Первые данные появятся через 10 минут</p>
+                  <p className="text-sm">Текущее количество активных роботов: {robots.filter(r => r.status === 'active').length}</p>
+                </div>
+              )}
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                Обновление каждые 10 минут • Последнее обновление: {formatDateTime(new Date())}
+              </div>
+            </div>
           </div>
 
-          {/* Блок 3: Последние сканирования */}
+          {/* Остальные блоки остаются без изменений */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-4">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
@@ -202,7 +349,6 @@ function Dashboard({ onOpenCSVModal }) {
             </div>
           </div>
 
-          {/* Блок 4: Предиктивная аналитика */}
           <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-4">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
@@ -241,8 +387,6 @@ function Dashboard({ onOpenCSVModal }) {
           </div>
         </div>
       </div>
-      
-      {/* ❌ УДАЛИЛИ старый индикатор снизу справа */}
     </div>
   );
 }

@@ -63,7 +63,7 @@ class YandexGPTClient:
         }
         
         with httpx.Client() as client:
-            response = client.post(settings.API_URL + "/api/ai/predict", json=request_data)
+            response = client.post(settings.API_URL + "/api/ai/predict/post", json=request_data)
         
         return response.text
     

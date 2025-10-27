@@ -92,12 +92,15 @@ app.add_middleware(
 def login(form_data: LoginRequest):
     return auth_service.login(form_data.email, form_data.password)
 
-@app.post("/api/ai/predict", response_model=PredictResponse)
+
+@app.post("/api/ai/predict/post", response_model=PredictResponse)
 def predict(request: PredictRequest):
-    return {
-        "predictions": request.categories,
-        "confidence": 0.95
-    }
+    db.add_predictions(request)
+
+@app.get("/api/ai/predict", response_model=PredictResponse)
+def predict(request: PredictRequest):
+    predictions = db.get_last_predictions()
+    return predictions
 
 @app.post("/api/robots/data")
 def receive_robot_data(data: dict):
