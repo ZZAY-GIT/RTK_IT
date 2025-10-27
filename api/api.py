@@ -1,18 +1,24 @@
-from contextlib import asynccontextmanager
 from datetime import datetime
 import asyncio
+from contextlib import asynccontextmanager
 from db.DataBaseManager import db
 import pandas as pd
-from fastapi import FastAPI, UploadFile, File, HTTPException, WebSocket
+from fastapi import FastAPI, UploadFile, File, HTTPException, WebSocket, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from auth.auth_service import auth_service
-from typing import List, Dict
-from pydantic import BaseModel
-from typing import Optional
+from typing import List, Dict, Optional
 import io
+from settings import settings
 import logging
 from api.websocket_manager import ws_manager, ws_handler
+from api.schemas import (
+    UserCreate, UserUpdate, UserResponse,
+    ProductCreate, ProductUpdate, ProductResponse,
+    RobotCreate, RobotUpdate, RobotResponse,
+    PredictRequest, PredictResponse, LoginRequest
+)
 
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 app = FastAPI(title="Simple FastAPI Service", version="1.0.0")
 
@@ -24,66 +30,63 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-class PredictRequest(BaseModel):
-    period_days: int
-    categories: List[Dict]
+security = HTTPBearer()
 
-class PredictResponse(BaseModel):
-    predictions: List[Dict]
-    confidence: float
 
-class Location(BaseModel):
-    zone: str
-    row: int
-    shelf: int
+def admin_required(current_user: UserResponse):
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    return current_user
 
-class ScanResult(BaseModel):
-    product_id: str
-    product_name: str
-    quantity: int
-    status: str
-
-class RobotData(BaseModel):
-    robot_id: str
-    timestamp: str
-    location: Location
-    scan_results: List[ScanResult]
-    battery_level: float
-    next_checkpoint: str
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # STARTUP
+    # Запуск при старте приложения
     logging.info("Starting application...")
     
-    # Запускаем фоновую задачу для WebSocket broadcast
+    # Запускаем фоновую задачу для broadcast обновлений
     broadcast_task = asyncio.create_task(
-        ws_manager.broadcast_dashboard_updates(interval=5)
+        ws_manager.broadcast_dashboard_updates(
+            interval=5  # Обновления каждые 5 секунд
+        )
     )
-    logging.info("Websocket broadcast task started.")
-
-
-    #SHUTDOWN
+    
+    logging.info("WebSocket broadcast task started")
+    
+    yield  # Приложение работает
+    
+    # Очистка при остановке приложения
     logging.info("Shutting down application...")
-
-    #Останавливаем
+    
+    # Отменяем фоновую задачу
     broadcast_task.cancel()
     try:
         await broadcast_task
     except asyncio.CancelledError:
         pass
-
-    #Закрываем все активные WebSocket соединения
-    for connection in ws_manager.connections[:]:
+    
+    # Закрываем все активные WebSocket соединения
+    for connection in ws_manager.active_connections[:]:
         try:
             await connection.close()
         except:
             pass
-    logging.info("All WebSocket connections closed.")
+    
+    logging.info("All WebSocket connections closed")
 
-class LoginRequest(BaseModel):
-    email: str
-    password: str
+app = FastAPI(title="Simple FastAPI Service", version="1.0.0", lifespan=lifespan)
+
+# Остальной код остается без изменений...
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # или ["*"] для разработки
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
 
 @app.post("/api/auth/login")
 def login(form_data: LoginRequest):
@@ -96,18 +99,11 @@ def predict(request: PredictRequest):
         "confidence": 0.95
     }
 
-@app.get("/test")
-def read_user(user_id: int | None = None):
-    """Получить пользователя по ID"""
-    state = {"robots": [123, 332, 12], "recent_scans": [543], "statistics": {123: {"battary": 98, "coords": (123, 322)}}}
-    return state
-
 @app.post("/api/robots/data")
 def receive_robot_data(data: dict):
     status = db.add_robot_data(data)
     
 
-    
 @app.post("/api/inventory/import")
 def add_csv_file(file_csv: UploadFile = File(...)):
     if not file_csv.filename.lower().endswith('.csv'):
@@ -177,6 +173,118 @@ def get_inventory_history(
         "pagination": {}  # пустой объект, как в требовании
     }
 
+# =============== Admin Endpoints ===============
+
+# User endpoints
+@app.post("/api/admin/user", response_model=UserResponse)
+def create_user(user: UserCreate, current_user: UserResponse = Depends(admin_required)):
+    db_user = db.add_user(user.email, user.password, user.name, user.role)
+    if not db_user:
+        raise HTTPException(status_code=400, detail="User with this email already exists")
+    return db_user
+
+@app.get("/api/admin/user", response_model=List[UserResponse])
+def get_all_users(current_user: UserResponse = Depends(admin_required)):
+    users = db.get_all_users()
+    return users
+
+@app.get("/api/admin/user/{user_id}", response_model=UserResponse)
+def get_user(user_id: int, current_user: UserResponse = Depends(admin_required)):
+    user = db.get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+@app.put("/api/admin/user/{user_id}", response_model=UserResponse)
+def update_user(user_id: int, user_update: UserUpdate, current_user: UserResponse = Depends(admin_required)):
+    # Преобразуем Pydantic модель в словарь для передачи в метод обновления
+    update_data = user_update.dict(exclude_unset=True)
+    user = db.update_user(user_id, **update_data)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return user
+
+@app.delete("/api/admin/user/{user_id}")
+def delete_user(user_id: int, current_user: UserResponse = Depends(admin_required)):
+    success = db.delete_user(user_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"status": "success", "message": "User deleted successfully"}
+
+# Product endpoints
+@app.post("/api/admin/product", response_model=ProductResponse)
+def create_product(product: ProductCreate, current_user: UserResponse = Depends(admin_required)):
+    success = db.add_product(product.id, product.name, product.category, product.min_stock, product.optimal_stock)
+    if not success:
+        raise HTTPException(status_code=400, detail="Product with this ID already exists")
+    return db.get_product(product.id)
+
+@app.get("/api/admin/product", response_model=List[ProductResponse])
+def get_all_products(current_user: UserResponse = Depends(admin_required)):
+    products = db.get_all_products()
+    return products
+
+@app.get("/api/admin/product/{product_id}", response_model=ProductResponse)
+def get_product(product_id: str, current_user: UserResponse = Depends(admin_required)):
+    product = db.get_product(product_id)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product
+
+@app.put("/api/admin/product/{product_id}", response_model=ProductResponse)
+def update_product(product_id: str, product_update: ProductUpdate, current_user: UserResponse = Depends(admin_required)):
+    # Преобразуем Pydantic модель в словарь для передачи в метод обновления
+    update_data = product_update.dict(exclude_unset=True)
+    product = db.update_product(product_id, **update_data)
+    if not product:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return product
+
+@app.delete("/api/admin/product/{product_id}")
+def delete_product(product_id: str, current_user: UserResponse = Depends(admin_required)):
+    success = db.delete_product(product_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Product not found")
+    return {"status": "success", "message": "Product deleted successfully"}
+
+# Robot endpoints
+@app.post("/api/admin/robot", response_model=RobotResponse)
+def create_robot(robot: RobotCreate, current_user: UserResponse = Depends(admin_required)):
+    db_robot = db.add_robot(robot.id, robot.status, robot.battery_level)
+    if not db_robot:
+        raise HTTPException(status_code=400, detail="Robot with this ID already exists")
+    return db_robot
+
+@app.get("/api/admin/robot", response_model=List[RobotResponse])
+def get_all_robots(current_user: UserResponse = Depends(admin_required)):
+    robots = db.get_all_robots()
+    return robots
+
+@app.get("/api/admin/robot/{robot_id}", response_model=RobotResponse)
+def get_robot(robot_id: str, current_user: UserResponse = Depends(admin_required)):
+    robot = db.get_robot(robot_id)
+    if not robot:
+        raise HTTPException(status_code=404, detail="Robot not found")
+    return robot
+
+@app.put("/api/admin/robot/{robot_id}", response_model=RobotResponse)
+def update_robot(robot_id: str, robot_update: RobotUpdate, current_user: UserResponse = Depends(admin_required)):
+    # Преобразуем Pydantic модель в словарь для передачи в метод обновления
+    update_data = robot_update.dict(exclude_unset=True)
+    robot = db.update_robot(robot_id, **update_data)
+    if not robot:
+        raise HTTPException(status_code=404, detail="Robot not found")
+    return robot
+
+@app.delete("/api/admin/robot/{robot_id}")
+def delete_robot(robot_id: str, current_user: UserResponse = Depends(admin_required)):
+    success = db.delete_robot(robot_id)
+    if not success:
+        raise HTTPException(status_code=404, detail="Robot not found")
+    return {"status": "success", "message": "Robot deleted successfully"}
+
+# =============== WebSocket ===============
+
 @app.websocket("/api/ws/dashboard")
 async def websocket_dashboard(websocket: WebSocket):
     """
@@ -207,6 +315,7 @@ async def websocket_status():
 
 # =============== Health Check ===============
 
+@app.get("/")
 @app.get("/health")
 async def health_check():
     """Проверка здоровья приложения"""
@@ -218,4 +327,4 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="localhost", port=8000)

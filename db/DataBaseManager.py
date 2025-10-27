@@ -1,4 +1,3 @@
-
 from db.models import Base, User, Robot, Product, InventoryHistory, AIPrediction
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, func
@@ -24,7 +23,6 @@ class DataBaseManager:
         self.Product = Product
         self.InventoryHistory = InventoryHistory
         self.AIPrediction = AIPrediction
-
 
     # Методы User
     def add_user(self, email: str, password: str, name: str, role: str):
@@ -64,6 +62,16 @@ class DataBaseManager:
                 logging.info(f"User with email {email} not found")
                 return None
 
+    def get_user_by_id(self, user_id: int):
+        with self.DBSession() as _s:
+            user = _s.query(self.User).filter(self.User.id == user_id).first()
+            if user:
+                logging.info(f"User with id {user_id} found")
+                return user
+            else:
+                logging.info(f"User with id {user_id} not found")
+                return None
+
     def get_user_password(self, email: str) -> str | None:
         with self.DBSession() as _s:
             record = (
@@ -76,8 +84,55 @@ class DataBaseManager:
         record = record.password_hash
         return record
     
+    def get_all_users(self):
+        with self.DBSession() as _s:
+            users = _s.query(self.User).all()
+            return users
+    
+    def update_user(self, user_id: int, **kwargs):
+        with self.DBSession() as _s:
+            user = _s.query(self.User).filter(self.User.id == user_id).first()
+            if not user:
+                logging.info(f"User with id {user_id} not found")
+                return None
+            
+            # Обновляем только переданные поля
+            for key, value in kwargs.items():
+                if hasattr(user, key) and value is not None:
+                    if key == 'password':
+                        # Хешируем новый пароль
+                        user.password_hash = hash_password(value)
+                    else:
+                        setattr(user, key, value)
+            
+            try:
+                _s.commit()
+                logging.info(f"Successfully updated user with id {user_id}")
+                return user
+            except IntegrityError:
+                _s.rollback()
+                logging.error(f"Failed to update user with id {user_id}: IntegrityError")
+                return None
+    
+    def delete_user(self, user_id: int):
+        with self.DBSession() as _s:
+            user = _s.query(self.User).filter(self.User.id == user_id).first()
+            if not user:
+                logging.info(f"User with id {user_id} not found")
+                return False
+            
+            _s.delete(user)
+            try:
+                _s.commit()
+                logging.info(f"Successfully deleted user with id {user_id}")
+                return True
+            except IntegrityError:
+                _s.rollback()
+                logging.error(f"Failed to delete user with id {user_id}: IntegrityError")
+                return False
+
     # Методы Product
-    def add_product(self,id, name, category, min_stock, optimal_stock):
+    def add_product(self, id, name, category, min_stock, optimal_stock):
         with self.DBSession() as _s:
             new_product = self.Product(
                 id=id,
@@ -94,36 +149,220 @@ class DataBaseManager:
                 _s.rollback()
                 return False
 
+    def get_product(self, product_id: str):
+        with self.DBSession() as _s:
+            product = _s.query(self.Product).filter(self.Product.id == product_id).first()
+            if product:
+                logging.info(f"Product with id {product_id} found")
+                return product
+            else:
+                logging.info(f"Product with id {product_id} not found")
+                return None
+    
+    def get_all_products(self):
+        with self.DBSession() as _s:
+            products = _s.query(self.Product).all()
+            return products
+    
+    def update_product(self, product_id: str, **kwargs):
+        with self.DBSession() as _s:
+            product = _s.query(self.Product).filter(self.Product.id == product_id).first()
+            if not product:
+                logging.info(f"Product with id {product_id} not found")
+                return None
+            
+            # Обновляем только переданные поля
+            for key, value in kwargs.items():
+                if hasattr(product, key) and value is not None:
+                    setattr(product, key, value)
+            
+            try:
+                _s.commit()
+                logging.info(f"Successfully updated product with id {product_id}")
+                return product
+            except IntegrityError:
+                _s.rollback()
+                logging.error(f"Failed to update product with id {product_id}: IntegrityError")
+                return None
+    
+    def delete_product(self, product_id: str):
+        with self.DBSession() as _s:
+            product = _s.query(self.Product).filter(self.Product.id == product_id).first()
+            if not product:
+                logging.info(f"Product with id {product_id} not found")
+                return False
+            
+            _s.delete(product)
+            try:
+                _s.commit()
+                logging.info(f"Successfully deleted product with id {product_id}")
+                return True
+            except IntegrityError:
+                _s.rollback()
+                logging.error(f"Failed to delete product with id {product_id}: IntegrityError")
+                return False
+
+    # Методы Robot
+    def add_robot(self, robot_id: str, status: str = "active", battery_level: int = 100):
+        with self.DBSession() as _s:
+            # Проверяем существование робота
+            existing_robot = _s.query(self.Robot).filter(self.Robot.id == robot_id).first()
+
+            if existing_robot:
+                logging.info(f"Robot with id {robot_id} already exists")
+                # Робот существует
+                return existing_robot
+
+            # Робот не существует - создаем нового
+            new_robot = self.Robot(
+                id=robot_id,
+                status=status,
+                battery_level=battery_level,
+                last_update=datetime.now(),
+            )
+            _s.add(new_robot)
+            try:
+                _s.commit()
+                _s.refresh(new_robot)
+                logging.info(f"Successfully created robot with id {robot_id}")
+                return new_robot
+
+            except IntegrityError:
+                _s.rollback()
+                logging.error(f"Failed to create robot with id {robot_id}: IntegrityError")
+                return None
+
+    def get_robot(self, robot_id: str):
+        with self.DBSession() as _s:
+            robot = _s.query(self.Robot).filter(self.Robot.id == robot_id).first()
+            if robot:
+                logging.info(f"Robot with id {robot_id} found")
+                return robot
+            else:
+                logging.info(f"Robot with id {robot_id} not found")
+                return None
+
+    def get_all_robots(self):
+        with self.DBSession() as _s:
+            robots = _s.query(self.Robot).all()
+            return robots
+    
+    def update_robot(self, robot_id: str, **kwargs):
+        with self.DBSession() as _s:
+            robot = _s.query(self.Robot).filter(self.Robot.id == robot_id).first()
+            if not robot:
+                logging.info(f"Robot with id {robot_id} not found")
+                return None
+            
+            # Обновляем только переданные поля
+            for key, value in kwargs.items():
+                if hasattr(robot, key) and value is not None:
+                    setattr(robot, key, value)
+            
+            # Обновляем время последнего обновления
+            robot.last_update = datetime.now()
+            
+            try:
+                _s.commit()
+                logging.info(f"Successfully updated robot with id {robot_id}")
+                return robot
+            except IntegrityError:
+                _s.rollback()
+                logging.error(f"Failed to update robot with id {robot_id}: IntegrityError")
+                return None
+    
+    def delete_robot(self, robot_id: str):
+        with self.DBSession() as _s:
+            robot = _s.query(self.Robot).filter(self.Robot.id == robot_id).first()
+            if not robot:
+                logging.info(f"Robot with id {robot_id} not found")
+                return False
+            
+            _s.delete(robot)
+            try:
+                _s.commit()
+                logging.info(f"Successfully deleted robot with id {robot_id}")
+                return True
+            except IntegrityError:
+                _s.rollback()
+                logging.error(f"Failed to delete robot with id {robot_id}: IntegrityError")
+                return False
+
     #Работа робота
     def add_robot_data(self, robot_data):
         with self.DBSession() as _s:
             robot_id = robot_data.get("robot_id", None)
-            robot = self.get_robot(robot_id)
             battery_level = robot_data.get("battery_level", None)
-            if not robot:
-                robot_status = "active"
+            timestamp_str = robot_data.get("timestamp", None)
+            scanned_at = datetime.fromisoformat(timestamp_str.replace('Z', '+00:00')) if timestamp_str else datetime.now()
+
+            # Определяем статус на основе уровня батареи
+            robot_status = "active"
+            if battery_level is not None:
                 if battery_level < 20:
                     robot_status = "low_battery"
                 elif battery_level == 0:
                     robot_status = "inactive"
-                self.add_robot(robot_id, robot_status, battery_level)
-            n = len(robot_data.get("scan_results"))
-            for i in range(n):
-                robot_location = robot_data.get("location", None)
-                if robot_location:
-                    zone = robot_location.get("zone", None)
-                    row_number = robot_location.get("row", None)
-                    shelf_number = robot_location.get("shelf", None)
-                else:
-                    zone = None
-                    row_number = None
-                    shelf_number = None
-                scan_result = robot_data.get("scan_results", None)[i]
-                product_id  = scan_result.get("product_id", None)
+
+            robot = self.get_robot(robot_id)
+            if not robot:
+                # Добавляем нового робота
+                robot = self.add_robot(robot_id, robot_status, battery_level)
+                if not robot:
+                    return False
+            else:
+                # Обновляем существующего робота
+                robot.battery_level = battery_level
+                robot.status = robot_status
+                robot.last_update = datetime.now()
+                _s.add(robot)
+
+            # Получаем location (один для всех scan_results)
+            robot_location = robot_data.get("location", None)
+            zone = None
+            row_number = None
+            shelf_number = None
+            if robot_location:
+                zone = robot_location.get("zone", None)
+                row_number = robot_location.get("row", None)
+                shelf_number = robot_location.get("shelf", None)
+
+            # Обновляем текущую позицию робота
+            if zone is not None:
+                robot.current_zone = zone
+            if row_number is not None:
+                robot.current_row = row_number
+            if shelf_number is not None:
+                robot.current_shelf = shelf_number
+            _s.add(robot)
+
+            # Обрабатываем scan_results
+            scan_results = robot_data.get("scan_results", [])
+            for scan_result in scan_results:
+                product_id = scan_result.get("product_id", None)
+                product_name = scan_result.get("product_name", None)
                 quantity = scan_result.get("quantity", None)
                 status = scan_result.get("status", None)
-                timestamp = robot_data.get("timestamp", None)
 
+                if product_id and product_name:
+                    # Проверяем/добавляем/обновляем продукт
+                    product = self.get_product(product_id)
+                    if not product:
+                        # Добавляем новый продукт с дефолтными значениями
+                        self.add_product(
+                            id=product_id,
+                            name=product_name,
+                            category=None,  # Можно задать дефолт или извлечь, если нужно
+                            min_stock=10,   # Дефолт из модели
+                            optimal_stock=100  # Дефолт из модели
+                        )
+                    else:
+                        # Обновляем имя, если оно отличается (опционально)
+                        if product.name != product_name:
+                            product.name = product_name
+                            _s.add(product)
+
+                # Создаем запись в InventoryHistory
                 new_inventory_history = self.InventoryHistory(
                     robot_id=robot_id,
                     zone=zone,
@@ -132,17 +371,18 @@ class DataBaseManager:
                     product_id=product_id,
                     quantity=quantity,
                     status=status,
-                    scanned_at=timestamp
+                    scanned_at=scanned_at
                 )
                 _s.add(new_inventory_history)
+
             try:
                 _s.commit()
+                logging.info(f"Successfully processed robot data for {robot_id}")
                 return True
-            except IntegrityError:
+            except IntegrityError as e:
                 _s.rollback()
+                logging.error(f"Failed to process robot data for {robot_id}: {str(e)}")
                 return False
-        #self._commit_record(new_inventory_history)
-
 
     def get_current_state(self):
         """Получает текущее состояние для dashboard"""
@@ -305,55 +545,12 @@ class DataBaseManager:
             return (active_robots_count, count_robots)
         
     # Средний заряд батареи роботов, возвращает чило
-    def average_battery_charge(self): # Не проверено
+    def average_battery_charge(self):
         with self.DBSession() as _s:
-            avg_battery = _s.query(func.avg(Robot.battery_level)).scalar()
-            return avg_battery
-    
-
-    def add_robot(self, robot_id: str, status: str = "active", battery_level: int = 100):
-        with self.DBSession() as _s:
-            # Проверяем существование робота
-            existing_robot = _s.query(self.Robot).filter(self.Robot.id == robot_id).first()
-
-            if existing_robot:
-                logging.info(f"Robot with id {robot_id} already exists")
-                # Робот существует
-                return existing_robot
-
-            # Робот не существует - создаем нового
-            new_robot = self.Robot(
-                id=robot_id,
-                status=status,
-                battery_level=battery_level,
-                last_update=datetime.now(),
-            )
-            _s.add(new_robot)
-            try:
-                _s.commit()
-                _s.refresh(new_robot)
-                logging.info(f"Successfully created robot with id {robot_id}")
-                return new_robot
-
-            except IntegrityError:
-                _s.rollback()
-                logging.error(f"Failed to create robot with id {robot_id}: IntegrityError")
-                return None
-
-    def get_robot(self, robot_id: str):
-        with self.DBSession() as _s:
-            robot = _s.query(self.Robot).filter(self.Robot.id == robot_id).first()
-            if robot:
-                logging.info(f"Robot with id {robot_id} found")
-                return robot
-            else:
-                logging.info(f"Robot with id {robot_id} not found")
-                return None
-
-    def get_all_robots(self):
-        with self.DBSession() as _s:
-            robots = _s.query(self.Robot).all()
-            return robots
+            avg_battery = _s.query(func.avg(Robot.battery_level)) \
+                            .filter(Robot.status == "active") \
+                            .scalar()
+        return avg_battery
 
 db = DataBaseManager(settings.CONN_STR)
 
