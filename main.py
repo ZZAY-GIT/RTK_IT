@@ -1,8 +1,9 @@
 from db.DataBaseManager import db, verify_password
 from db.test_data import generate_test_data, generate_inventory_history_data
 import io
-import pandas as pd
+#import pandas as pd
 from api.api import app
+
 from random import choice
 
 # 1. Добавить пользователя (хеширование происходит внутри add_user)

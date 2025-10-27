@@ -31,7 +31,7 @@ class WebSocketConnectionManager:
     async def send_personal_message(self, message: dict, websocket: WebSocket):
         """Отправить сообщение конкретному клиенту"""
         try:
-            await websocket.send_json(message)
+            await websocket.send_text(json.dumps(message,default=float))
         except Exception as e:
             logging.error(f"Error sending message to client: {e}")
             self.disconnect(websocket)
@@ -43,7 +43,7 @@ class WebSocketConnectionManager:
         
         for connection in self.active_connections:
             try:
-                await connection.send_json(message)
+                await connection.send_text(json.dumps(message,default=float))
             except Exception as e:
                 logging.error(f"Error broadcasting to client: {e}")
                 disconnected.append(connection)

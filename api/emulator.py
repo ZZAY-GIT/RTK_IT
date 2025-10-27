@@ -1,6 +1,6 @@
 import time
 import random
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 class RobotEmulator:
@@ -68,7 +68,7 @@ class RobotEmulator:
 
         data = {
             "robot_id": self.robot_id,
-            "timestamp": datetime.utcnow().isoformat() + "Z",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "location": {
                 "zone": self.current_zone,
                 "row": self.current_row,

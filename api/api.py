@@ -1,5 +1,5 @@
+from contextlib import asynccontextmanager
 from datetime import datetime
-
 import asyncio
 from db.DataBaseManager import db
 import pandas as pd
@@ -51,34 +51,35 @@ class RobotData(BaseModel):
     battery_level: float
     next_checkpoint: str
 
-@app.on_event("startup")
-async def startup_event():
-    """Запуск фоновых задач при старте приложения"""
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # STARTUP
     logging.info("Starting application...")
     
-    # Запускаем фоновую задачу для broadcast обновлений
-    asyncio.create_task(
-        ws_manager.broadcast_dashboard_updates(
-            interval=5  # Обновления каждые 3 секунды
-        )
+    # Запускаем фоновую задачу для WebSocket broadcast
+    broadcast_task = asyncio.create_task(
+        ws_manager.broadcast_dashboard_updates(interval=5)
     )
-    
-    logging.info("WebSocket broadcast task started")
+    logging.info("Websocket broadcast task started.")
 
 
-@app.on_event("shutdown")
-async def shutdown_event():
-    """Очистка при остановке приложения"""
+    #SHUTDOWN
     logging.info("Shutting down application...")
-    
-    # Закрываем все активные WebSocket соединения
-    for connection in ws_manager.active_connections[:]:
+
+    #Останавливаем
+    broadcast_task.cancel()
+    try:
+        await broadcast_task
+    except asyncio.CancelledError:
+        pass
+
+    #Закрываем все активные WebSocket соединения
+    for connection in ws_manager.connections[:]:
         try:
             await connection.close()
         except:
             pass
-    
-    logging.info("All WebSocket connections closed")
+    logging.info("All WebSocket connections closed.")
 
 class LoginRequest(BaseModel):
     email: str
@@ -217,4 +218,4 @@ async def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8002)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
