@@ -15,6 +15,11 @@ function Header({ onOpenCSVModal }) {
     navigate('/login');
   };
 
+  // Функция для проверки активной ссылки
+  const isActiveLink = (path) => {
+    return location.pathname === path;
+  };
+
   return (
     <header className="bg-white dark:bg-gray-800 shadow-md">
       {/* Верхняя панель: логотип + имя */}
@@ -71,28 +76,39 @@ function Header({ onOpenCSVModal }) {
         <div className="flex space-x-8">
           <Link
             to="/dashboard"
-            className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition"
+            className={`transition ${
+              isActiveLink('/dashboard')
+                ? 'text-blue-600 dark:text-blue-400 font-medium underline'
+                : 'text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:underline'
+            }`}
           >
             Текущий мониторинг
           </Link>
           <Link
             to="/history"
-            className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition"
+            className={`transition ${
+              isActiveLink('/history')
+                ? 'text-blue-600 dark:text-blue-400 font-medium underline'
+                : 'text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:underline'
+            }`}
           >
             Исторические данные
           </Link>
           {['operator', 'admin'].includes(user?.role) && (
             <Link
               to="/admin"
-              className="text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:underline transition"
+              className={`transition ${
+                isActiveLink('/admin')
+                  ? 'text-blue-600 dark:text-blue-400 font-medium underline'
+                  : 'text-gray-600 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 hover:underline'
+              }`}
             >
               Панель администратора
             </Link>
           )}
         </div>
 
-       
-      <div className="flex items-center">
+        <div className="flex items-center">
           <button
             onClick={onOpenCSVModal}
             className={`bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-all text-sm ${

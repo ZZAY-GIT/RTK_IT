@@ -4,7 +4,7 @@ import { Line } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, PointElement, LineElement, Title, Tooltip, Legend } from 'chart.js';
 import { fetchHistoryData, setFilters } from '../store/warehouseSlice';
 import Header from '../components/Header';
-import { ChevronDownIcon, SearchIcon } from '@heroicons/react/outline';
+import { SearchIcon } from '@heroicons/react/outline';
 import { useTheme } from '../hooks/useTheme';
 
 // Регистрация компонентов Chart.js
@@ -309,7 +309,8 @@ function History({ onOpenCSVModal }) {
         <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-4 mb-6">
           <div className="flex justify-between items-center mb-4">
             <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-              Фильтры {hasActiveFilters && '⚡'}
+              Фильтры 
+              {/* TODO {hasActiveFilters && '⚡'} */}
             </h2>
             <div className="flex items-center gap-4">
               {activeQuickPeriod && (
@@ -373,7 +374,6 @@ function History({ onOpenCSVModal }) {
                     </option>
                   ))}
                 </select>
-                <ChevronDownIcon className="absolute right-2 top-2 h-5 w-5 text-gray-400 dark:text-gray-300" />
               </div>
             </div>
             <div>
@@ -391,7 +391,6 @@ function History({ onOpenCSVModal }) {
                   <option value="low">Низкий остаток</option>
                   <option value="critical">Критично</option>
                 </select>
-                <ChevronDownIcon className="absolute right-2 top-2 h-5 w-5 text-gray-400 dark:text-gray-300" />
               </div>
             </div>
             <div className="col-span-2">
@@ -446,7 +445,7 @@ function History({ onOpenCSVModal }) {
                 <strong>Активные фильтры:</strong>
                 {filters.startDate && ` От: ${filters.startDate}`}
                 {filters.endDate && ` До: ${filters.endDate}`}
-                {filters.zones?.length > 0 && ` Зона: ${filters.zones.join(', ')}`}
+                {filters.zones?.length > 0 && ` Зон: ${filters.zones.join(', ')}`}
                 {filters.status?.length > 0 && ` Статус: ${filters.status.join(', ')}`}
                 {filters.search && ` Поиск: "${filters.search}"`}
               </div>

@@ -37,6 +37,8 @@ function Admin({ onOpenCSVModal }) {
     row: '',
     shelf: '',
   });
+  const availableZones = [...new Set(products.map(item => item.zone))].filter(zone => zone && zone !== 'N/A');
+
 
   // Проверка роли оператора
   const isOperator = user?.role === 'operator';
@@ -197,18 +199,19 @@ function Admin({ onOpenCSVModal }) {
               className={`px-4 py-2 rounded-lg font-semibold ${
                 activeTab === 'products'
                   ? 'bg-blue-600 dark:bg-blue-700 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 bg-white'
               }`}
               onClick={() => setActiveTab('products')}
             >
               Товары
             </button>
+            
             {isOperator && (
               <button
                 className={`px-4 py-2 rounded-lg font-semibold ${
                   activeTab === 'users'
-                    ? 'bg-blue-600 dark:bg-blue-700 text-white'
-                    : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100'
+                    ? 'bg-blue-600 dark:bg-blue-700 text-white '
+                    : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 bg-white'
                 }`}
                 onClick={() => setActiveTab('users')}
               >
@@ -219,7 +222,7 @@ function Admin({ onOpenCSVModal }) {
               className={`px-4 py-2 rounded-lg font-semibold ${
                 activeTab === 'robots'
                   ? 'bg-blue-600 dark:bg-blue-700 text-white'
-                  : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100'
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 bg-white'
               }`}
               onClick={() => setActiveTab('robots')}
             >
@@ -265,22 +268,19 @@ function Admin({ onOpenCSVModal }) {
                 </label>
                 <div className="relative">
                   <select
-                    multiple
-                    value={filters.zones}
-                    onChange={(e) =>
-                      handleFilterChange({
-                        zones: Array.from(e.target.selectedOptions, (opt) => opt.value),
-                      })
-                    }
-                    className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
-                  >
-                    {['A', 'B', 'C'].map((zone) => (
-                      <option key={zone} value={zone}>
-                        {zone}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDownIcon className="absolute right-2 top-2 h-5 w-5 text-gray-400 dark:text-gray-300" />
+                  value={filters.zones && filters.zones.length > 0 ? filters.zones[0] : ''}
+                  onChange={(e) => handleFilterChange({ 
+                    zones: e.target.value ? [e.target.value] : [] 
+                  })}
+                  className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
+                >
+                  <option value="">Все зоны</option>
+                  {availableZones.map((zone) => (
+                    <option key={zone} value={zone}>
+                      {zone}
+                    </option>
+                  ))}
+                </select>
                 </div>
               </div>
             </div>
@@ -288,11 +288,6 @@ function Admin({ onOpenCSVModal }) {
               <thead>
                 <tr className="bg-gray-100 dark:bg-gray-700">
                   <th className="p-2 text-left">
-                    <input
-                      type="checkbox"
-                      onChange={(e) => setSelectedItems(e.target.checked ? filteredProducts : [])}
-                      className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
-                    />
                   </th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">Артикул</th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">Название</th>
@@ -308,13 +303,14 @@ function Admin({ onOpenCSVModal }) {
                   <tr key={product.id} className="border-t dark:border-gray-600">
                     <td className="p-2">
                       <input
+                      
                         type="checkbox"
-                        checked={selectedItems.includes(product)}
+                        checked={selectedItems.some((item) => item.id === product.id)}
                         onChange={(e) => {
                           if (e.target.checked) {
                             setSelectedItems([...selectedItems, product]);
                           } else {
-                            setSelectedItems(selectedItems.filter((i) => i !== product));
+                            setSelectedItems(selectedItems.filter((i) => i.id !== product.id));
                           }
                         }}
                         className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
@@ -409,11 +405,6 @@ function Admin({ onOpenCSVModal }) {
               <thead>
                 <tr className="bg-gray-100 dark:bg-gray-700">
                   <th className="p-2 text-left">
-                    <input
-                      type="checkbox"
-                      onChange={(e) => setSelectedItems(e.target.checked ? filteredUsers : [])}
-                      className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
-                    />
                   </th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">ID</th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">Email</th>
@@ -428,12 +419,12 @@ function Admin({ onOpenCSVModal }) {
                     <td className="p-2">
                       <input
                         type="checkbox"
-                        checked={selectedItems.includes(user)}
+                        checked={selectedItems.some((item) => item.id === user.id)}
                         onChange={(e) => {
                           if (e.target.checked) {
                             setSelectedItems([...selectedItems, user]);
                           } else {
-                            setSelectedItems(selectedItems.filter((i) => i !== user));
+                            setSelectedItems(selectedItems.filter((i) => i.id !== user.id));
                           }
                         }}
                         className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
@@ -528,11 +519,6 @@ function Admin({ onOpenCSVModal }) {
               <thead>
                 <tr className="bg-gray-100 dark:bg-gray-700">
                   <th className="p-2 text-left">
-                    <input
-                      type="checkbox"
-                      onChange={(e) => setSelectedItems(e.target.checked ? filteredRobots : [])}
-                      className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
-                    />
                   </th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">ID робота</th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">Название</th>
@@ -547,12 +533,12 @@ function Admin({ onOpenCSVModal }) {
                     <td className="p-2">
                       <input
                         type="checkbox"
-                        checked={selectedItems.includes(robot)}
+                        checked={selectedItems.some((item) => item.robotId === robot.robotId)}
                         onChange={(e) => {
                           if (e.target.checked) {
                             setSelectedItems([...selectedItems, robot]);
                           } else {
-                            setSelectedItems(selectedItems.filter((i) => i !== robot));
+                            setSelectedItems(selectedItems.filter((item) => item.robotId !== robot.robotId));
                           }
                         }}
                         className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
@@ -666,9 +652,11 @@ function Admin({ onOpenCSVModal }) {
                     className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
                   >
                     <option value="">Выберите зону</option>
-                    {['A', 'B', 'C'].map((zone) => (
-                      <option key={zone} value={zone}>{zone}</option>
-                    ))}
+                    {availableZones.map((zone) => (
+                    <option key={zone} value={zone}>
+                      {zone}
+                    </option>
+                  ))}
                   </select>
                 </div>
                 <div>
@@ -804,7 +792,8 @@ function Admin({ onOpenCSVModal }) {
                       <option value="inactive">Неактивен</option>
                     </select>
                   </div>
-                  <div>
+                  {/*TODO*/}
+                  {/* <div>
                     <label className="block text-sm text-gray-600 dark:text-gray-300">Зона</label>
                     <input
                       type="text"
@@ -813,7 +802,23 @@ function Admin({ onOpenCSVModal }) {
                       required
                       className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
                     />
-                  </div>
+                  </div> */}
+
+                  <div>
+                  <label className="block text-sm text-gray-600 dark:text-gray-300">Зона</label>
+                  <select
+                    value={formData.zone}
+                    onChange={(e) => setFormData({ ...formData, zone: e.target.value })}
+                    className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
+                  >
+                    <option value="">Выберите зону</option>
+                    {availableZones.map((zone) => (
+                    <option key={zone} value={zone}>
+                      {zone}
+                    </option>
+                  ))}
+                  </select>
+                </div>
                 </div>
                 <div className="mt-4 flex justify-end space-x-2">
                   <button
