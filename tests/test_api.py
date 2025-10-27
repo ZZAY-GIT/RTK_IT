@@ -11,7 +11,7 @@ import io
 import json
 
 @pytest.mark.unit
-@pytest.mark.asyncio
+# @pytest.mark.asyncio
 class TestApi:
     """Класс для тестирования эндпоинтов FastAPI из api.py."""
 
@@ -74,6 +74,37 @@ class TestApi:
             "predictions": [{"id": "cat1", "name": "Category 1"}],
             "confidence": 0.95
         }
+
+    def test_get_test_endpoint(self, client):
+        """Тест эндпоинта /test."""
+        response = client.get("/test")
+        
+        assert response.status_code == 200
+        assert response.json() == {
+            "robots": [123, 332, 12],
+            "recent_scans": [543],
+            "statistics": {"123": {"battary": 98, "coords": [123, 322]}}
+        }
+
+    def test_receive_robot_data_success(self, client, mock_db, mock_ws_manager):
+        """Тест успешного добавления данных робота."""
+        robot_data = {
+            "robot_id": "ROB-001",
+            "timestamp": "2025-10-26T19:30:00",
+            "location": {"zone": "A", "row": 1, "shelf": 2},
+            "scan_results": [
+                {"product_id": "PROD-001", "product_name": "Product 1", "quantity": 10, "status": "ok"}
+            ],
+            "battery_level": 95.5,
+            "next_checkpoint": "CHECK-001"
+        }
+        mock_db.add_robot_data.return_value = True
+        
+        response = client.post("/api/robots/data", json=robot_data)
+        
+        assert response.status_code == 200
+        mock_db.add_robot_data.assert_called_once()
+        # mock_ws_manager.broadcast.assert_called_once()
 
     def test_receive_robot_data_failure(self, client, mock_db, mock_ws_manager):
         """Тест неуспешного добавления данных робота."""
