@@ -389,30 +389,32 @@ class DataBaseManager:
         with self.DBSession() as _s:
             # Активные роботы
             active_robots_count, total_robots = self.get_active_robots()
-
+    
             # Средний заряд батареи
             avg_battery = self.average_battery_charge() or 0
-
+    
             # Проверено сегодня
             today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
             scanned_today = _s.query(self.InventoryHistory) \
                 .filter(self.InventoryHistory.scanned_at >= today_start) \
                 .count()
-
+    
             # Критические остатки
             critical_stocks = _s.query(self.InventoryHistory) \
                 .filter(self.InventoryHistory.status == 'CRITICAL') \
                 .filter(self.InventoryHistory.scanned_at >= today_start) \
                 .count()
-
-            # Последние сканирования (20 записей)
-            recent_scans = _s.query(self.InventoryHistory) \
+    
+            # Последние сканирования (20 записей) с JOIN к продуктам
+            recent_scans = _s.query(self.InventoryHistory, self.Product.name.label('product_name')) \
+                .join(self.Product, self.InventoryHistory.product_id == self.Product.id) \
                 .order_by(self.InventoryHistory.scanned_at.desc()) \
+                .limit(20) \
                 .all()
-
+    
             # Текущие роботы
             robots = _s.query(self.Robot).all()
-
+    
             return {
                 "statistics": {
                     "active_robots": active_robots_count,
@@ -438,12 +440,14 @@ class DataBaseManager:
                         "id": scan.id,
                         "robot_id": scan.robot_id,
                         "product_id": scan.product_id,
+                        "product_name": product_name,  # Добавлено имя продукта
                         "quantity": scan.quantity,
                         "zone": scan.zone,
+                        "shelf_number": scan.shelf_number,
                         "status": scan.status,
                         "scanned_at": scan.scanned_at.isoformat() if scan.scanned_at else None
                     }
-                    for scan in recent_scans
+                    for scan, product_name in recent_scans  # Распаковываем кортеж
                 ]
             }
 
@@ -468,11 +472,12 @@ class DataBaseManager:
         
     # Сводка работы роботов по фильтрам
     def get_filter_inventory_history(self, from_date=None, to_date=None, zone=None, shelf=None, status=None, category=None):
-        
+    
         with self.DBSession() as _s:
-            # Базовый запрос для inventory_history
-            
-            query = _s.query(InventoryHistory)
+            # Базовый запрос для inventory_history с JOIN к products
+            query = _s.query(InventoryHistory, Product.name.label('product_name'))\
+                      .join(Product, InventoryHistory.product_id == Product.id)
+
             # Применяем фильтры
             if from_date is not None:
                 query = query.filter(InventoryHistory.scanned_at >= from_date)
@@ -484,21 +489,18 @@ class DataBaseManager:
                 query = query.filter(InventoryHistory.shelf_number == shelf)
             if status is not None:
                 query = query.filter(InventoryHistory.status == status)
+
             fileter_history = []
-
-            # Получаем все записи inventory_history
-            inventory_records = query.all()
-
+            # Получаем все записи inventory_history с именами продуктов
+            records = query.all()
             # Собираем все product_id для batch запроса к AI predictions
-            product_ids = [inv.product_id for inv in inventory_records if inv.product_id]
-
+            product_ids = [inv_his.product_id for inv_his, product_name in records if inv_his.product_id]
             # Получаем все AI predictions для этих product_ids одним запросом
             ai_predictions = {}
             if product_ids:
                 predictions_query = _s.query(AIPrediction).filter(
                     AIPrediction.product_id.in_(product_ids)
                 )
-
                 # Группируем predictions по product_id, берем последнее по дате
                 for pred in predictions_query:
                     if pred.product_id not in ai_predictions:
@@ -509,30 +511,29 @@ class DataBaseManager:
                         if pred.prediction_date and existing_pred.prediction_date:
                             if pred.prediction_date > existing_pred.prediction_date:
                                 ai_predictions[pred.product_id] = pred
-
             # Формируем результат
-            for inv_his in inventory_records:
+            for inv_his, product_name in records:
                 result_json = {
                     'robot_id': inv_his.robot_id,
                     'product_id': inv_his.product_id,
+                    'product_name': product_name,  # Добавлено имя продукта
                     'quantity': inv_his.quantity,
                     'zone': inv_his.zone,
+                    'shelf_number': inv_his.shelf_number,
                     'status': inv_his.status,
                     'scanned_at': inv_his.scanned_at.isoformat() if inv_his.scanned_at else None,
                 }
-
                 # Ищем AI предсказание для этого product_id
                 ai_pred = ai_predictions.get(inv_his.product_id)
-
                 if ai_pred:
                     result_json['recommended_order'] = ai_pred.recommended_order
                     result_json['discrepancy'] = abs(inv_his.quantity - ai_pred.recommended_order)
+                    result_json['prediction_confidence'] = ai_pred.confidence
                 else:
                     result_json['recommended_order'] = 0
                     result_json['discrepancy'] = inv_his.quantity
-
+                    result_json['prediction_confidence'] = None
                 fileter_history.append(result_json)
-                
             return fileter_history
         
     # dashboard
