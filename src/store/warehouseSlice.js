@@ -73,7 +73,14 @@ export const deleteProduct = createAsyncThunk(
 export const fetchUsers = createAsyncThunk(
   'warehouse/fetchUsers',
   async () => {
-    const response = await axios.get('http://localhost:8000/api/users');
+    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
+    console.log('🔐 Token from storage:', token); // ← Должен вывести токен
+    
+    const response = await axios.get('http://localhost:8000/api/admin/user', {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
     return response.data;
   }
 );
@@ -81,7 +88,7 @@ export const fetchUsers = createAsyncThunk(
 export const createUser = createAsyncThunk(
   'warehouse/createUser',
   async (user) => {
-    const response = await axios.post('http://localhost:8000/api/users', user);
+    const response = await axios.post('http://localhost:8000/api/admin/user', user);
     return response.data;
   }
 );
@@ -89,7 +96,7 @@ export const createUser = createAsyncThunk(
 export const updateUser = createAsyncThunk(
   'warehouse/updateUser',
   async ({ id, user }) => {
-    const response = await axios.put(`http://localhost:8000/api/users/${id}`, user);
+    const response = await axios.put(`http://localhost:8000/api/admin/user/${id}`, user);
     return response.data;
   }
 );
@@ -97,7 +104,7 @@ export const updateUser = createAsyncThunk(
 export const deleteUser = createAsyncThunk(
   'warehouse/deleteUser',
   async (id) => {
-    await axios.delete(`http://localhost:8000/api/users/${id}`);
+    await axios.delete(`http://localhost:8000/api/admin/user/${id}`);
     return id;
   }
 );

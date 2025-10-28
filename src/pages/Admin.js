@@ -135,6 +135,7 @@ function Admin({ onOpenCSVModal }) {
     const userData = {
       id: editingUser?.id || Date.now().toString(),
       email: formData.get('email'),
+      password: formData.get('password'),
       name: formData.get('name'),
       role: formData.get('role'),
     };
@@ -715,6 +716,16 @@ function Admin({ onOpenCSVModal }) {
                       type="email"
                       name="email"
                       defaultValue={editingUser?.email || ''}
+                      required
+                      className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 dark:text-gray-300">Password</label>
+                    <input
+                      type="password"
+                      name="password"
+                      defaultValue={editingUser?.pas || ''}
                       required
                       className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
                     />

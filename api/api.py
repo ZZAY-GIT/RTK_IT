@@ -3,6 +3,7 @@ import asyncio
 from contextlib import asynccontextmanager
 from db.DataBaseManager import db
 import pandas as pd
+from fastapi.encoders import jsonable_encoder
 from fastapi import FastAPI, UploadFile, File, HTTPException, WebSocket, Depends, status
 from fastapi.middleware.cors import CORSMiddleware
 from auth.auth_service import auth_service
@@ -19,29 +20,7 @@ from api.schemas import (
 )
 
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-
-app = FastAPI(title="Simple FastAPI Service", version="1.0.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # или ["*"] для разработки
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
-
-security = HTTPBearer()
-
-
-def admin_required(current_user: UserResponse):
-    if current_user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
-    return current_user
-
-
+    
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Запуск при старте приложения
@@ -79,7 +58,6 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Simple FastAPI Service", version="1.0.0", lifespan=lifespan)
 
-# Остальной код остается без изменений...
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000"],  # или ["*"] для разработки
@@ -87,6 +65,47 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["*"],
 )
+
+security = HTTPBearer(auto_error=False)
+
+def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    if credentials is None:
+        print("❌ No Authorization header provided")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing Authorization header"
+        )
+    
+    token = credentials.credentials
+    user = auth_service.get_current_user(token)
+    print(user)
+    if not user:
+        raise HTTPException(401, "User not found")
+    # Преобразуем в UserResponse
+    return UserResponse(
+        id=user.id,
+        email=user.email,
+        name=user.name,
+        role=user.role,
+        created_at=user.created_at.isoformat()
+    )
+
+def admin_required(current_user: UserResponse = Depends(get_current_user)):
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    return current_user
+
+def operator_required(current_user: UserResponse = Depends(get_current_user)):
+    print(current_user.role)
+    if current_user.role != "operator":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="operator access required"
+        )
+    return current_user
 
 @app.post("/api/auth/login")
 def login(form_data: LoginRequest):
@@ -180,16 +199,18 @@ def get_inventory_history(
 
 # User endpoints
 @app.post("/api/admin/user", response_model=UserResponse)
-def create_user(user: UserCreate, current_user: UserResponse = Depends(admin_required)):
+def create_user(user: UserCreate):#, current_user: UserResponse = Depends(admin_required)):
     db_user = db.add_user(user.email, user.password, user.name, user.role)
     if not db_user:
         raise HTTPException(status_code=400, detail="User with this email already exists")
     return db_user
 
-@app.get("/api/admin/user", response_model=List[UserResponse])
-def get_all_users(current_user: UserResponse = Depends(admin_required)):
+@app.get("/api/admin/user")
+def get_all_users(current_user: UserResponse = Depends(operator_required)):
+    if current_user.role != "operator":
+        raise HTTPException(403, "Admin access required")
     users = db.get_all_users()
-    return users
+    return jsonable_encoder(users)
 
 @app.get("/api/admin/user/{user_id}", response_model=UserResponse)
 def get_user(user_id: int, current_user: UserResponse = Depends(admin_required)):
@@ -208,7 +229,7 @@ def update_user(user_id: int, user_update: UserUpdate, current_user: UserRespons
     return user
 
 @app.delete("/api/admin/user/{user_id}")
-def delete_user(user_id: int, current_user: UserResponse = Depends(admin_required)):
+def delete_user(user_id: int, current_user: UserResponse = Depends(operator_required)):
     success = db.delete_user(user_id)
     if not success:
         raise HTTPException(status_code=404, detail="User not found")

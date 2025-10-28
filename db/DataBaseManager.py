@@ -7,6 +7,12 @@ from settings import settings
 from datetime import datetime, timedelta
 import bcrypt
 from datetime import datetime
+from api.schemas import (
+    UserCreate, UserUpdate, UserResponse,
+    ProductCreate, ProductUpdate, ProductResponse,
+    RobotCreate, RobotUpdate, RobotResponse,
+    PredictRequest, PredictResponse, LoginRequest
+)
 
 
 class DataBaseManager:
@@ -26,15 +32,13 @@ class DataBaseManager:
 
     # Методы User
     def add_user(self, email: str, password: str, name: str, role: str):
-        password_hash = hash_password(password)  # Хешируем пароль
+        password_hash = hash_password(password)
         with self.DBSession() as _s:
-            # Проверяем, существует ли пользователь с таким email
             existing_user = _s.query(self.User).filter(self.User.email == email).first()
             if existing_user:
                 logging.info(f"User with email {email} already exists")
-                return None  # Или можно выбросить исключение
+                return None
 
-            # Создаем нового пользователя
             new_user = self.User(
                 email=email,
                 password_hash=password_hash,
@@ -44,34 +48,23 @@ class DataBaseManager:
             _s.add(new_user)
             try:
                 _s.commit()
+                _s.refresh(new_user)  # Важно!
+
                 logging.info(f"Successfully created user with email {email}")
-                return new_user
-            except IntegrityError:
+
+                # Возвращаем словарь с данными пользователя
+                return {
+                    "id": new_user.id,
+                    "email": new_user.email,
+                    "name": new_user.name,
+                    "role": new_user.role,
+                    "created_at": new_user.created_at.isoformat()
+                }
+            except Exception as e:
                 _s.rollback()
-                logging.error(f"Failed to create user with email {email}: IntegrityError")
+                print(f"Failed to create user: {e}")
                 return None
             
-    def add_ai_prediction(self, data_ai_prediction):
-        with self.DBSession() as _s:
-            new_ai_predictionc = self.AIPrediction(
-                product_id = data_ai_prediction["product_id"],
-                recommended_order = data_ai_prediction["recommended_order"],
-                days_until_stockout = data_ai_prediction["days_until_stockout"],
-                confidence_score = 0.95,
-                prediction_date = datetime.now(),
-                created_at = datetime.now(),
-            )
-            _s.add(new_ai_predictionc)
-            try:
-                _s.commit()
-                logging.info(f"Successfully add new_ai_predictionc")
-                return new_ai_predictionc
-            except IntegrityError:
-                _s.rollback()
-                logging.error(f"Failed to create")
-                return None
-            
-    
     def get_user(self, email: str):
         with self.DBSession() as _s:
             # Проверяем, существует ли пользователь с таким email
@@ -108,7 +101,16 @@ class DataBaseManager:
     def get_all_users(self):
         with self.DBSession() as _s:
             users = _s.query(self.User).all()
-            return users
+            return [
+                UserResponse(
+                    id=user.id,
+                    email=user.email,
+                    name=user.name,
+                    role=user.role,
+                    created_at=user.created_at.isoformat()
+                )
+                for user in users
+            ]
     
     def update_user(self, user_id: int, **kwargs):
         with self.DBSession() as _s:
