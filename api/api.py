@@ -222,13 +222,6 @@ def get_all_users(current_user: UserResponse = Depends(operator_required)):
     users = db.get_all_users()
     return jsonable_encoder(users)
 
-@app.get("/api/admin/user/{user_id}", response_model=UserResponse)
-def get_user(user_id: int, current_user: UserResponse = Depends(operator_required)):
-    user = db.get_user_by_id(user_id)
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-    return user
-
 @app.put("/api/admin/user/{user_id}", response_model=UserResponse)
 def update_user(user_id: int, user_update: UserUpdate, current_user: UserResponse = Depends(operator_required)):
     # Проверяем, что пользователь не пытается изменить себя
@@ -260,8 +253,6 @@ def delete_user(user_id: int, current_user: UserResponse = Depends(operator_requ
 # Product endpoints
 @app.post("/api/admin/products", response_model=ProductResponse)
 def create_product(product: ProductCreate, current_user: UserResponse = Depends(operator_required)):
-    # Теперь передаем только name, category, min_stock, optimal_stock
-    # ID генерируется автоматически
     product_id = db.add_product(
         name=product.name,
         category=product.category,
@@ -274,16 +265,8 @@ def create_product(product: ProductCreate, current_user: UserResponse = Depends(
 
 @app.get("/api/admin/products", response_model=List[ProductResponse])
 def get_all_products(current_user: UserResponse = Depends(access_level)):
-    # УБЕРИТЕ дублирующую проверку - operator_required уже проверила роль
     products = db.get_all_products()
     return jsonable_encoder(products)
-
-@app.get("/api/admin/products/{product_id}", response_model=ProductResponse)
-def get_product(product_id: str, current_user: UserResponse = Depends(access_level)):
-    product = db.get_product(product_id)
-    if not product:
-        raise HTTPException(status_code=404, detail="Product not found")
-    return product
 
 @app.put("/api/admin/products/{product_id}", response_model=ProductResponse)
 def update_product(product_id: str, product_update: ProductUpdate, current_user: UserResponse = Depends(access_level)):
@@ -319,13 +302,6 @@ def create_robot(robot: RobotCreate, current_user: UserResponse = Depends(operat
 def get_all_robots(current_user: UserResponse = Depends(access_level)):
     robots = db.get_all_robots()
     return jsonable_encoder(robots)
-
-@app.get("/api/admin/robot/{robot_id}", response_model=RobotResponse)
-def get_robot(robot_id: str, current_user: UserResponse = Depends(access_level)):
-    robot = db.get_robot(robot_id)
-    if not robot:
-        raise HTTPException(status_code=404, detail="Robot not found")
-    return robot
 
 @app.put("/api/admin/robot/{robot_id}", response_model=RobotResponse)
 def update_robot(robot_id: str, robot_update: RobotUpdate, current_user: UserResponse = Depends(access_level)):
