@@ -4,11 +4,12 @@ from contextlib import asynccontextmanager
 from db.DataBaseManager import db
 import pandas as pd
 from fastapi.encoders import jsonable_encoder
-from fastapi import FastAPI, UploadFile, File, HTTPException, WebSocket, Depends, status
+from fastapi import FastAPI, UploadFile, File, HTTPException, WebSocket, Depends, status, Header
 from fastapi.middleware.cors import CORSMiddleware
 from auth.auth_service import auth_service
 from typing import List, Dict, Optional
 import io
+import json
 from settings import settings
 import logging
 from api.websocket_manager import ws_manager, ws_handler
@@ -68,29 +69,32 @@ app.add_middleware(
 
 security = HTTPBearer(auto_error=False)
 
-def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    if credentials is None:
-        print("❌ No Authorization header provided")
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing Authorization header"
+def get_current_user_from_client(
+    x_user_data: str = Header(..., alias="X-User-Data")
+):
+    try:
+        
+        # 1. Первый раз парсим JSON (убираем экранирование)
+        first_parse = json.loads(x_user_data)
+        
+        # 2. Если результат - строка, парсим еще раз
+        if isinstance(first_parse, str):
+            user_dict = json.loads(first_parse)
+        else:
+            user_dict = first_parse
+        # 3. Создаем объект UserResponse
+        current_user = UserResponse(
+            id=user_dict['id'],
+            email=user_dict['email'],
+            name=user_dict['name'],
+            role=user_dict['role']
         )
+        
+        return current_user
+    except (json.JSONDecodeError, KeyError):
+        raise HTTPException(status_code=400, detail="Invalid user data in header")
     
-    token = credentials.credentials
-    user = auth_service.get_current_user(token)
-    print(user)
-    if not user:
-        raise HTTPException(401, "User not found")
-    # Преобразуем в UserResponse
-    return UserResponse(
-        id=user.id,
-        email=user.email,
-        name=user.name,
-        role=user.role,
-        created_at=user.created_at.isoformat()
-    )
-
-def admin_required(current_user: UserResponse = Depends(get_current_user)):
+def admin_required(current_user: UserResponse = Depends(get_current_user_from_client)):
     if current_user.role != "admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -98,7 +102,7 @@ def admin_required(current_user: UserResponse = Depends(get_current_user)):
         )
     return current_user
 
-def operator_required(current_user: UserResponse = Depends(get_current_user)):
+def operator_required(current_user: UserResponse = Depends(get_current_user_from_client)):
     print(current_user.role)
     if current_user.role != "operator":
         raise HTTPException(
@@ -205,7 +209,7 @@ def create_user(user: UserCreate):#, current_user: UserResponse = Depends(admin_
         raise HTTPException(status_code=400, detail="User with this email already exists")
     return db_user
 
-@app.get("/api/admin/user")
+@app.get("/api/admin/user", response_model=List[UserResponse])
 def get_all_users(current_user: UserResponse = Depends(operator_required)):
     if current_user.role != "operator":
         raise HTTPException(403, "Admin access required")

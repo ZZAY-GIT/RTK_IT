@@ -12,21 +12,6 @@ class AuthService:
 
     def get_user_password(self, email: str) -> str | None:
         return db.get_user_password(email)
-    
-    def get_current_user(self, token: str):
-        try:
-            payload = jwt.decode(
-                token, 
-                self.JWT_SECRET, 
-                algorithms=[self.ALGORITHM]
-            )
-            user_id = payload.get("sub")
-            user = db.get_user_by_id(int(user_id))
-            return user
-        except jwt.ExpiredSignatureError:
-            raise HTTPException(401, "Token expired")
-        except jwt.InvalidTokenError:
-            raise HTTPException(401, "Invalid token")
 
     def create_jwt_token(self, data: dict) -> str:
         expire = datetime.utcnow() + timedelta(minutes=self.TOKEN_EXPIRE_MINUTES)

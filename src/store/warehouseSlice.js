@@ -73,12 +73,11 @@ export const deleteProduct = createAsyncThunk(
 export const fetchUsers = createAsyncThunk(
   'warehouse/fetchUsers',
   async () => {
-    const token = localStorage.getItem('token') || sessionStorage.getItem('token');
-    console.log('🔐 Token from storage:', token); // ← Должен вывести токен
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
     
     const response = await axios.get('http://localhost:8000/api/admin/user', {
       headers: {
-        'Authorization': `Bearer ${token}`
+        'X-User-Data': JSON.stringify(user)
       }
     });
     return response.data;
