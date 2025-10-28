@@ -8,6 +8,8 @@ from random import choice
 
 # 1. Добавить пользователя (хеширование происходит внутри add_user)
 db.add_user("ampleenkov.do@gmail.com", "123123123", "Daniil", "operator")
+#users = db.get_all_users()
+#print(users)
 
 ## 2. Проверить пароль через БД
 #password = db.get_user_password("ampleenkov.do@gmail.com")

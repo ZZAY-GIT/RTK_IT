@@ -19,17 +19,21 @@ class UserResponse(BaseModel):
     email: str
     name: str
     role: str
-    created_at: str
     
     class Config:
         from_attributes = True
 
 class ProductCreate(BaseModel):
-    id: str
     name: str
-    category: str
-    min_stock: int
-    optimal_stock: int
+    category: Optional[str] = ""
+    min_stock: Optional[int] = 0
+    optimal_stock: Optional[int] = 0
+
+class ProductResponse(ProductCreate):
+    id: str  # ID теперь генерируется на сервере
+    
+    class Config:
+        from_attributes = True
 
 class ProductUpdate(BaseModel):
     name: Optional[str] = None
@@ -43,14 +47,28 @@ class ProductResponse(BaseModel):
     category: str
     min_stock: int
     optimal_stock: int
+
     
     class Config:
         from_attributes = True
 
+from pydantic import BaseModel
+from typing import Optional
+from datetime import datetime
+
 class RobotCreate(BaseModel):
+    status: str
+    battery_level: int
+    current_zone: Optional[str] = ""
+    current_row: Optional[int] = 0
+    current_shelf: Optional[int] = 0
+
+class RobotResponse(RobotCreate):
     id: str
-    status: str = "active"
-    battery_level: int = 100
+    last_update: str
+    
+    class Config:
+        from_attributes = True
 
 class RobotUpdate(BaseModel):
     status: Optional[str] = None
@@ -58,18 +76,6 @@ class RobotUpdate(BaseModel):
     current_zone: Optional[str] = None
     current_row: Optional[int] = None
     current_shelf: Optional[int] = None
-
-class RobotResponse(BaseModel):
-    id: str
-    status: str
-    battery_level: int
-    last_update: str
-    current_zone: Optional[str]
-    current_row: Optional[int]
-    current_shelf: Optional[int]
-    
-    class Config:
-        from_attributes = True
 
 class Location(BaseModel):
     zone: str

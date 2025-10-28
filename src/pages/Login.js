@@ -44,7 +44,8 @@ function Login() {
         password,
       });
 
-      const { token, user } = response.data;
+      const token = response.data.token;
+      const user = response.data.user;
 
       if (token && user) {
         // Сохраняем в нужное хранилище

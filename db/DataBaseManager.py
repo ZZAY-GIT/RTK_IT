@@ -8,6 +8,12 @@ from datetime import datetime, timedelta
 import bcrypt
 from datetime import datetime
 from typing import List, Dict
+from api.schemas import (
+    UserCreate, UserUpdate, UserResponse,
+    ProductCreate, ProductUpdate, ProductResponse,
+    RobotCreate, RobotUpdate, RobotResponse,
+    PredictRequest, PredictResponse, LoginRequest
+)
 
 
 class DataBaseManager:
@@ -27,15 +33,13 @@ class DataBaseManager:
 
     # Методы User
     def add_user(self, email: str, password: str, name: str, role: str):
-        password_hash = hash_password(password)  # Хешируем пароль
+        password_hash = hash_password(password)
         with self.DBSession() as _s:
-            # Проверяем, существует ли пользователь с таким email
             existing_user = _s.query(self.User).filter(self.User.email == email).first()
             if existing_user:
                 logging.info(f"User with email {email} already exists")
-                return None  # Или можно выбросить исключение
+                return None
 
-            # Создаем нового пользователя
             new_user = self.User(
                 email=email,
                 password_hash=password_hash,
@@ -45,13 +49,20 @@ class DataBaseManager:
             _s.add(new_user)
             try:
                 _s.commit()
+                _s.refresh(new_user)  # Важно!
+
                 logging.info(f"Successfully created user with email {email}")
-                return new_user
-            except IntegrityError:
+                
+                return UserResponse(id=new_user.id,
+                    email=new_user.email,
+                    name=new_user.name,
+                    role=new_user.role,
+                )
+            except Exception as e:
                 _s.rollback()
-                logging.error(f"Failed to create user with email {email}: IntegrityError")
+                print(f"Failed to create user: {e}")
                 return None
-    
+            
     def get_user(self, email: str):
         with self.DBSession() as _s:
             # Проверяем, существует ли пользователь с таким email
@@ -88,7 +99,16 @@ class DataBaseManager:
     def get_all_users(self):
         with self.DBSession() as _s:
             users = _s.query(self.User).all()
-            return users
+            return [
+                UserResponse(
+                    id=user.id,
+                    email=user.email,
+                    name=user.name,
+                    role=user.role,
+                    created_at=user.created_at.isoformat()
+                )
+                for user in users
+            ]
     
     def update_user(self, user_id: int, **kwargs):
         with self.DBSession() as _s:
@@ -96,7 +116,7 @@ class DataBaseManager:
             if not user:
                 logging.info(f"User with id {user_id} not found")
                 return None
-            
+
             # Обновляем только переданные поля
             for key, value in kwargs.items():
                 if hasattr(user, key) and value is not None:
@@ -105,11 +125,19 @@ class DataBaseManager:
                         user.password_hash = hash_password(value)
                     else:
                         setattr(user, key, value)
-            
+
             try:
                 _s.commit()
+                _s.refresh(user)  # Обновляем объект из базы
                 logging.info(f"Successfully updated user with id {user_id}")
-                return user
+
+                # Возвращаем UserResponse вместо SQLAlchemy объекта
+                return UserResponse(
+                    id=user.id,
+                    email=user.email,
+                    name=user.name,
+                    role=user.role
+                )
             except IntegrityError:
                 _s.rollback()
                 logging.error(f"Failed to update user with id {user_id}: IntegrityError")
@@ -133,10 +161,38 @@ class DataBaseManager:
                 return False
 
     # Методы Product
-    def add_product(self, id, name, category, min_stock, optimal_stock):
+    def add_product(self, name, category, min_stock, optimal_stock):
         with self.DBSession() as _s:
+            # Ищем максимальный существующий ID с префиксом TEL-
+            max_id_product = _s.query(self.Product).filter(
+                self.Product.id.like('TEL-%')
+            ).order_by(
+                self.Product.id.desc()
+            ).first()
+
+            # Генерируем новый ID
+            if max_id_product:
+                # Извлекаем числовую часть из последнего ID
+                last_number = int(max_id_product.id.split('-')[1])
+                new_number = last_number + 1
+            else:
+                # Если нет существующих продуктов с TEL-, начинаем с 1
+                new_number = 1
+
+            # Форматируем новый ID с ведущими нулями (минимум 4 цифры)
+            new_id = f"TEL-{new_number:04d}"
+
+            # Проверяем, не существует ли уже продукт с таким ID (на всякий случай)
+            existing_product = _s.query(self.Product).filter(self.Product.id == new_id).first()
+            if existing_product:
+                # Если существует, ищем следующий доступный номер
+                while existing_product:
+                    new_number += 1
+                    new_id = f"TEL-{new_number:04d}"
+                    existing_product = _s.query(self.Product).filter(self.Product.id == new_id).first()
+
             new_product = self.Product(
-                id=id,
+                id=new_id,
                 name=name,
                 category=category,
                 min_stock=min_stock,
@@ -145,7 +201,7 @@ class DataBaseManager:
             _s.add(new_product)
             try:
                 _s.commit()
-                return True
+                return new_id  # Возвращаем сгенерированный ID
             except IntegrityError:
                 _s.rollback()
                 return False
@@ -163,7 +219,16 @@ class DataBaseManager:
     def get_all_products(self):
         with self.DBSession() as _s:
             products = _s.query(self.Product).all()
-            return products
+            return [
+                ProductResponse(
+                    id=product.id,
+                    name=product.name,
+                    category=product.category if product.category is not None else "",
+                    min_stock=product.min_stock if product.min_stock is not None else 0,
+                    optimal_stock=product.optimal_stock if product.optimal_stock is not None else 0
+                )
+                for product in products
+            ]
     
     def update_product(self, product_id: str, **kwargs):
         with self.DBSession() as _s:
@@ -171,16 +236,25 @@ class DataBaseManager:
             if not product:
                 logging.info(f"Product with id {product_id} not found")
                 return None
-            
+
             # Обновляем только переданные поля
             for key, value in kwargs.items():
                 if hasattr(product, key) and value is not None:
                     setattr(product, key, value)
-            
+
             try:
                 _s.commit()
+                _s.refresh(product)  # Обновляем объект из БД
                 logging.info(f"Successfully updated product with id {product_id}")
-                return product
+
+                # Возвращаем объект ProductResponse
+                return ProductResponse(
+                    id=product.id,
+                    name=product.name,
+                    category=product.category if product.category is not None else "",
+                    min_stock=product.min_stock if product.min_stock is not None else 0,
+                    optimal_stock=product.optimal_stock if product.optimal_stock is not None else 0
+                )
             except IntegrityError:
                 _s.rollback()
                 logging.error(f"Failed to update product with id {product_id}: IntegrityError")
@@ -204,81 +278,125 @@ class DataBaseManager:
                 return False
 
     # Методы Robot
-    def add_robot(self, robot_id: str, status: str = "active", battery_level: int = 100):
-        with self.DBSession() as _s:
-            # Проверяем существование робота
-            existing_robot = _s.query(self.Robot).filter(self.Robot.id == robot_id).first()
-
-            if existing_robot:
-                logging.info(f"Robot with id {robot_id} already exists")
-                # Робот существует
-                return existing_robot
-
-            # Робот не существует - создаем нового
-            new_robot = self.Robot(
-                id=robot_id,
-                status=status,
-                battery_level=battery_level,
-                last_update=datetime.now(),
-            )
-            _s.add(new_robot)
-            try:
-                _s.commit()
-                _s.refresh(new_robot)
-                logging.info(f"Successfully created robot with id {robot_id}")
-                return new_robot
-
-            except IntegrityError:
-                _s.rollback()
-                logging.error(f"Failed to create robot with id {robot_id}: IntegrityError")
-                return None
-
     def get_robot(self, robot_id: str):
         with self.DBSession() as _s:
             robot = _s.query(self.Robot).filter(self.Robot.id == robot_id).first()
             if robot:
                 logging.info(f"Robot with id {robot_id} found")
-                return robot
+                # Возвращаем RobotResponse с правильными полями
+                return RobotResponse(
+                    id=robot.id,
+                    status=robot.status,
+                    battery_level=robot.battery_level,
+                    current_zone=robot.current_zone if robot.current_zone is not None else "",
+                    current_row=robot.current_row if robot.current_row is not None else 0,
+                    current_shelf=robot.current_shelf if robot.current_shelf is not None else 0,
+                    last_update=robot.last_update.isoformat() if robot.last_update else ""
+                )
             else:
                 logging.info(f"Robot with id {robot_id} not found")
                 return None
+            
+    def add_robot(self, status: str, battery_level: int, current_zone: str = "", current_row: int = 0, current_shelf: int = 0):
+        with self.DBSession() as _s:
+            # Ищем максимальный существующий ID с префиксом RB-
+            max_id_robot = _s.query(self.Robot).filter(
+                self.Robot.id.like('RB-%')
+            ).order_by(
+                self.Robot.id.desc()
+            ).first()
+
+            # Генерируем новый ID
+            if max_id_robot:
+                last_number = int(max_id_robot.id.split('-')[1])
+                new_number = last_number + 1
+            else:
+                new_number = 1
+
+            new_id = f"RB-{new_number:04d}"
+
+            # Проверяем существование (на всякий случай)
+            existing_robot = _s.query(self.Robot).filter(self.Robot.id == new_id).first()
+            if existing_robot:
+                while existing_robot:
+                    new_number += 1
+                    new_id = f"RB-{new_number:04d}"
+                    existing_robot = _s.query(self.Robot).filter(self.Robot.id == new_id).first()
+
+            new_robot = self.Robot(
+                id=new_id,
+                status=status,
+                battery_level=battery_level,
+                current_zone=current_zone,
+                current_row=current_row,
+                current_shelf=current_shelf,
+                last_update=datetime.now()
+            )
+            _s.add(new_robot)
+            try:
+                _s.commit()
+                return new_id
+            except IntegrityError:
+                _s.rollback()
+                return False
 
     def get_all_robots(self):
         with self.DBSession() as _s:
             robots = _s.query(self.Robot).all()
-            return robots
-    
+            return [
+                RobotResponse(
+                    id=robot.id,
+                    status=robot.status,
+                    battery_level=robot.battery_level,
+                    current_zone=robot.current_zone if robot.current_zone is not None else "",
+                    current_row=robot.current_row if robot.current_row is not None else 0,
+                    current_shelf=robot.current_shelf if robot.current_shelf is not None else 0,
+                    last_update=robot.last_update.isoformat() if robot.last_update else ""
+                )
+                for robot in robots
+            ]
+
     def update_robot(self, robot_id: str, **kwargs):
         with self.DBSession() as _s:
             robot = _s.query(self.Robot).filter(self.Robot.id == robot_id).first()
             if not robot:
                 logging.info(f"Robot with id {robot_id} not found")
                 return None
-            
+
             # Обновляем только переданные поля
             for key, value in kwargs.items():
                 if hasattr(robot, key) and value is not None:
                     setattr(robot, key, value)
-            
+
             # Обновляем время последнего обновления
             robot.last_update = datetime.now()
-            
+
             try:
                 _s.commit()
+                _s.refresh(robot)
                 logging.info(f"Successfully updated robot with id {robot_id}")
-                return robot
+
+                return RobotResponse(
+                    id=robot.id,
+                    status=robot.status,
+                    battery_level=robot.battery_level,
+                    current_zone=robot.current_zone if robot.current_zone is not None else "",
+                    current_row=robot.current_row if robot.current_row is not None else 0,
+                    current_shelf=robot.current_shelf if robot.current_shelf is not None else 0,
+                    last_update=robot.last_update.isoformat() if robot.last_update else ""
+                )
             except IntegrityError:
                 _s.rollback()
                 logging.error(f"Failed to update robot with id {robot_id}: IntegrityError")
                 return None
-    
+
     def delete_robot(self, robot_id: str):
         with self.DBSession() as _s:
             robot = _s.query(self.Robot).filter(self.Robot.id == robot_id).first()
             if not robot:
                 logging.info(f"Robot with id {robot_id} not found")
                 return False
-            
+
             _s.delete(robot)
             try:
                 _s.commit()
@@ -390,30 +508,32 @@ class DataBaseManager:
         with self.DBSession() as _s:
             # Активные роботы
             active_robots_count, total_robots = self.get_active_robots()
-
+    
             # Средний заряд батареи
             avg_battery = self.average_battery_charge() or 0
-
+    
             # Проверено сегодня
             today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
             scanned_today = _s.query(self.InventoryHistory) \
                 .filter(self.InventoryHistory.scanned_at >= today_start) \
                 .count()
-
+    
             # Критические остатки
             critical_stocks = _s.query(self.InventoryHistory) \
                 .filter(self.InventoryHistory.status == 'CRITICAL') \
                 .filter(self.InventoryHistory.scanned_at >= today_start) \
                 .count()
-
-            # Последние сканирования (20 записей)
-            recent_scans = _s.query(self.InventoryHistory) \
+    
+            # Последние сканирования (20 записей) с JOIN к продуктам
+            recent_scans = _s.query(self.InventoryHistory, self.Product.name.label('product_name')) \
+                .join(self.Product, self.InventoryHistory.product_id == self.Product.id) \
                 .order_by(self.InventoryHistory.scanned_at.desc()) \
+                .limit(20) \
                 .all()
-
+    
             # Текущие роботы
             robots = _s.query(self.Robot).all()
-
+    
             return {
                 "statistics": {
                     "active_robots": active_robots_count,
@@ -439,12 +559,14 @@ class DataBaseManager:
                         "id": scan.id,
                         "robot_id": scan.robot_id,
                         "product_id": scan.product_id,
+                        "product_name": product_name,  # Добавлено имя продукта
                         "quantity": scan.quantity,
                         "zone": scan.zone,
+                        "shelf_number": scan.shelf_number,
                         "status": scan.status,
                         "scanned_at": scan.scanned_at.isoformat() if scan.scanned_at else None
                     }
-                    for scan in recent_scans
+                    for scan, product_name in recent_scans  # Распаковываем кортеж
                 ]
             }
 
@@ -605,11 +727,12 @@ class DataBaseManager:
 
     # Сводка работы роботов по фильтрам
     def get_filter_inventory_history(self, from_date=None, to_date=None, zone=None, shelf=None, status=None, category=None):
-        
+    
         with self.DBSession() as _s:
-            # Базовый запрос для inventory_history
-            
-            query = _s.query(InventoryHistory)
+            # Базовый запрос для inventory_history с JOIN к products
+            query = _s.query(InventoryHistory, Product.name.label('product_name'))\
+                      .join(Product, InventoryHistory.product_id == Product.id)
+
             # Применяем фильтры
             if from_date is not None:
                 query = query.filter(InventoryHistory.scanned_at >= from_date)
@@ -621,21 +744,18 @@ class DataBaseManager:
                 query = query.filter(InventoryHistory.shelf_number == shelf)
             if status is not None:
                 query = query.filter(InventoryHistory.status == status)
+
             fileter_history = []
-
-            # Получаем все записи inventory_history
-            inventory_records = query.all()
-
+            # Получаем все записи inventory_history с именами продуктов
+            records = query.all()
             # Собираем все product_id для batch запроса к AI predictions
-            product_ids = [inv.product_id for inv in inventory_records if inv.product_id]
-
+            product_ids = [inv_his.product_id for inv_his, product_name in records if inv_his.product_id]
             # Получаем все AI predictions для этих product_ids одним запросом
             ai_predictions = {}
             if product_ids:
                 predictions_query = _s.query(AIPrediction).filter(
                     AIPrediction.product_id.in_(product_ids)
                 )
-
                 # Группируем predictions по product_id, берем последнее по дате
                 for pred in predictions_query:
                     if pred.product_id not in ai_predictions:
@@ -646,30 +766,29 @@ class DataBaseManager:
                         if pred.prediction_date and existing_pred.prediction_date:
                             if pred.prediction_date > existing_pred.prediction_date:
                                 ai_predictions[pred.product_id] = pred
-
             # Формируем результат
-            for inv_his in inventory_records:
+            for inv_his, product_name in records:
                 result_json = {
                     'robot_id': inv_his.robot_id,
                     'product_id': inv_his.product_id,
+                    'product_name': product_name,  # Добавлено имя продукта
                     'quantity': inv_his.quantity,
                     'zone': inv_his.zone,
+                    'shelf_number': inv_his.shelf_number,
                     'status': inv_his.status,
                     'scanned_at': inv_his.scanned_at.isoformat() if inv_his.scanned_at else None,
                 }
-
                 # Ищем AI предсказание для этого product_id
                 ai_pred = ai_predictions.get(inv_his.product_id)
-
                 if ai_pred:
                     result_json['recommended_order'] = ai_pred.recommended_order
                     result_json['discrepancy'] = abs(inv_his.quantity - ai_pred.recommended_order)
+                    result_json['prediction_confidence'] = ai_pred.confidence
                 else:
                     result_json['recommended_order'] = 0
                     result_json['discrepancy'] = inv_his.quantity
-
+                    result_json['prediction_confidence'] = None
                 fileter_history.append(result_json)
-                
             return fileter_history
         
     # dashboard

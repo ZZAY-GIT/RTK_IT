@@ -40,7 +40,14 @@ export const fetchAIPredictions = createAsyncThunk(
 export const fetchProducts = createAsyncThunk(
   'warehouse/fetchProducts',
   async (filters) => {
-    const response = await axios.get('http://localhost:8000/products', { params: filters });
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    const response = await axios.get('http://localhost:8000/api/admin/products', { 
+      params: filters,
+      headers: {
+        'X-User-Data': JSON.stringify(user)
+      }
+    });
     return response.data;
   }
 );
@@ -48,15 +55,29 @@ export const fetchProducts = createAsyncThunk(
 export const addProduct = createAsyncThunk(
   'warehouse/addProduct',
   async (product) => {
-    const response = await axios.post('http://localhost:8000/products', product);
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    const { id, ...productData } = product;
+    
+    const response = await axios.post('http://localhost:8000/api/admin/products', productData, {
+      headers: {
+        'X-User-Data': user
+      }
+    });
     return response.data;
   }
 );
-
 export const updateProduct = createAsyncThunk(
   'warehouse/updateProduct',
   async ({ id, product }) => {
-    const response = await axios.put(`http://localhost:8000/products/${id}`, product);
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    const response = await axios.put(`http://localhost:8000/api/admin/products/${id}`, product, {
+      headers: {
+        'X-User-Data': user,
+        'Content-Type': 'application/json'
+      }
+    });
     return response.data;
   }
 );
@@ -64,7 +85,13 @@ export const updateProduct = createAsyncThunk(
 export const deleteProduct = createAsyncThunk(
   'warehouse/deleteProduct',
   async (id) => {
-    await axios.delete(`http://localhost:8000/products/${id}`);
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    await axios.delete(`http://localhost:8000/api/admin/products/${id}`, {
+      headers: {
+        'X-User-Data': user
+      }
+    });
     return id;
   }
 );
@@ -73,15 +100,27 @@ export const deleteProduct = createAsyncThunk(
 export const fetchUsers = createAsyncThunk(
   'warehouse/fetchUsers',
   async () => {
-    const response = await axios.get('http://localhost:8000/api/users');
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    const response = await axios.get('http://localhost:8000/api/admin/user', {
+      headers: {
+        'X-User-Data': JSON.stringify(user)
+      }
+    });
     return response.data;
   }
 );
 
 export const createUser = createAsyncThunk(
   'warehouse/createUser',
-  async (user) => {
-    const response = await axios.post('http://localhost:8000/api/users', user);
+  async (userData) => {
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    const response = await axios.post('http://localhost:8000/api/admin/user', userData, {
+      headers: {
+        'X-User-Data': user
+      }
+    });
     return response.data;
   }
 );
@@ -89,32 +128,68 @@ export const createUser = createAsyncThunk(
 export const updateUser = createAsyncThunk(
   'warehouse/updateUser',
   async ({ id, user }) => {
-    const response = await axios.put(`http://localhost:8000/api/users/${id}`, user);
-    return response.data;
+    const currentUser = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    try {
+      const response = await axios.put(`http://localhost:8000/api/admin/user/${id}`, user, {
+        headers: {
+          'X-User-Data': currentUser,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      // Пробрасываем ошибку с сообщением от сервера
+      throw new Error(error.response?.data?.detail || 'Failed to update user');
+    }
   }
 );
 
 export const deleteUser = createAsyncThunk(
   'warehouse/deleteUser',
   async (id) => {
-    await axios.delete(`http://localhost:8000/api/users/${id}`);
-    return id;
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    try {
+      const response = await axios.delete(`http://localhost:8000/api/admin/user/${id}`, {
+        headers: {
+          'X-User-Data': user
+        }
+      });
+      return id;
+    } catch (error) {
+      // Пробрасываем ошибку с сообщением от сервера
+      throw new Error(error.response?.data?.detail || 'Failed to delete user');
+    }
   }
 );
 
 // =============== Robots ===============
-export const fetchRobots = createAsyncThunk(
-  'warehouse/fetchRobots',
-  async () => {
-    const response = await axios.get('http://localhost:8000/api/robots');
+export const createRobot = createAsyncThunk(
+  'warehouse/createRobot',
+  async (robot) => {
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    const response = await axios.post('http://localhost:8000/api/admin/robot', robot, {
+      headers: {
+        'X-User-Data': user  // ← ДОБАВИТЬ этот заголовок
+      }
+    });
     return response.data;
   }
 );
 
-export const createRobot = createAsyncThunk(
-  'warehouse/createRobot',
-  async (robot) => {
-    const response = await axios.post('http://localhost:8000/api/robots', robot);
+// Также исправьте другие запросы для роботов:
+export const fetchRobots = createAsyncThunk(
+  'warehouse/fetchRobots',
+  async () => {
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    const response = await axios.get('http://localhost:8000/api/admin/robot', {
+      headers: {
+        'X-User-Data': JSON.stringify(user)  // ← ДОБАВИТЬ
+      }
+    });
     return response.data;
   }
 );
@@ -122,7 +197,14 @@ export const createRobot = createAsyncThunk(
 export const updateRobot = createAsyncThunk(
   'warehouse/updateRobot',
   async ({ id, robot }) => {
-    const response = await axios.put(`http://localhost:8000/api/robots/${id}`, robot);
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    const response = await axios.put(`http://localhost:8000/api/admin/robot/${id}`, robot, {
+      headers: {
+        'X-User-Data': user,  // ← ДОБАВИТЬ
+        'Content-Type': 'application/json'
+      }
+    });
     return response.data;
   }
 );
@@ -130,7 +212,13 @@ export const updateRobot = createAsyncThunk(
 export const deleteRobot = createAsyncThunk(
   'warehouse/deleteRobot',
   async (id) => {
-    await axios.delete(`http://localhost:8000/api/robots/${id}`);
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    await axios.delete(`http://localhost:8000/api/admin/robot/${id}`, {
+      headers: {
+        'X-User-Data': user  // ← ДОБАВИТЬ
+      }
+    });
     return id;
   }
 );
