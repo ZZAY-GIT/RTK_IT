@@ -171,6 +171,8 @@ const warehouseSlice = createSlice({
     historyData: [],
     products: [],
     users: [],
+    loading: false,
+    error: null,
     filters: {
       startDate: null,
       endDate: null,
@@ -231,8 +233,18 @@ const warehouseSlice = createSlice({
       .addCase(fetchHistoryData.fulfilled, (state, action) => {
         state.historyData = action.payload;
       })
+      .addCase(fetchAIPredictions.pending, (state) => {
+      state.loading = true;
+      state.error = null;
+      })
       .addCase(fetchAIPredictions.fulfilled, (state, action) => {
-        state.aiPredictions = action.payload;
+        state.loading = false;
+        // ✅ КЛЮЧЕВОЙ МОМЕНТ: сохраняем только массив из поля 'predictions'
+        state.aiPredictions = action.payload.predictions || [];
+      })
+      .addCase(fetchAIPredictions.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message;
       })
       .addCase(uploadCSV.fulfilled, (state) => {
         state.loading = false;

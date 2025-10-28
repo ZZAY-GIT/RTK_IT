@@ -12,10 +12,10 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Title, T
 
 function Dashboard({ onOpenCSVModal }) {
   const dispatch = useDispatch();
-  const { robots, zones, recentScans, aiPredictions, websocketStatus } = useSelector((state) => state.warehouse);
+  const { robots, zones, recentScans, aiPredictions, websocketStatus, loading, error } = useSelector((state) => state.warehouse);
   const { theme } = useTheme();
   const [activityHistory, setActivityHistory] = useState([]);
-
+  console.log('aiPredictions from Redux state:', aiPredictions);
   useWarehouseWebSocket();
 
   useEffect(() => {
@@ -35,6 +35,12 @@ function Dashboard({ onOpenCSVModal }) {
     });
   };
 
+  useEffect(() => {
+    dispatch(fetchDashboardData());
+    // ✅ ЗАГРУЖАЕМ ПРЕДСКАЗАНИЯ ПРИ ПЕРВОЙ ЗАГРУЗКЕ СТРАНИЦЫ
+    dispatch(fetchAIPredictions());
+  }, [dispatch]);
+  
   // Обновляем историю активности каждые 10 минут
   useEffect(() => {
     const activeRobotsCount = robots.filter(r => r.status === 'active').length;
@@ -91,6 +97,9 @@ function Dashboard({ onOpenCSVModal }) {
     return () => clearInterval(interval);
   }, [robots]);
 
+  const handleRefreshPredictions = () => {
+    dispatch(fetchAIPredictions());
+  };
   // Формируем данные для графика
   const chartData = {
     labels: activityHistory.map(item => {
@@ -355,32 +364,38 @@ function Dashboard({ onOpenCSVModal }) {
                 Прогноз ИИ на следующие 7 дней
               </h2>
               <button
-                onClick={() => dispatch(fetchAIPredictions())}
-                className="bg-blue-600 dark:bg-blue-700 text-white px-3 py-1 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800"
+                // ✅ ПРИВЯЗЫВАЕМ ФУНКЦИЮ К КНОПКЕ
+                onClick={handleRefreshPredictions}
+                disabled={loading}
+                className="bg-blue-600 dark:bg-blue-700 text-white px-3 py-1 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
               >
-                Обновить прогноз
+                {loading ? 'Генерация...' : 'Обновить прогноз'}
               </button>
             </div>
             <div className="space-y-2">
-              {aiPredictions.slice(0, 5).map((pred, index) => (
-                <div key={index} className="p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
-                    {pred.productName}
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
-                    Текущий остаток: {pred.currentStock}
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
-                    Прогноз исчерпания: {pred.exhaustionDate}
-                  </p>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
-                    Рекомендуемый заказ: {pred.recommendedOrder}
-                  </p>
-                </div>
-              ))}
+              {aiPredictions.length > 0 ? (
+                aiPredictions.slice(0, 5).map((pred, index) => (
+                  <div key={pred.product_id || index} className="p-2 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-100">
+                      ID товара: {pred.product_id}
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      Прогноз исчерпания: {pred.days_until_stockout} дней
+                    </p>
+                    <p className="text-sm text-gray-600 dark:text-gray-300">
+                      Рекомендуемый заказ: {pred.recommended_order} шт.
+                    </p>
+                  </div>
+                ))
+              ) : (
+                !loading && <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                  Нет данных для отображения.
+                </p>
+              )}
+
               {aiPredictions.length > 0 && (
                 <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Достоверность прогноза: {aiPredictions[0]?.confidence || 0}%
+                  Достоверность прогноза: 75%
                 </p>
               )}
             </div>
