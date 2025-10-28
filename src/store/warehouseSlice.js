@@ -40,7 +40,14 @@ export const fetchAIPredictions = createAsyncThunk(
 export const fetchProducts = createAsyncThunk(
   'warehouse/fetchProducts',
   async (filters) => {
-    const response = await axios.get('http://localhost:8000/products', { params: filters });
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    const response = await axios.get('http://localhost:8000/api/admin/products', { 
+      params: filters,
+      headers: {
+        'X-User-Data': JSON.stringify(user)
+      }
+    });
     return response.data;
   }
 );
@@ -48,7 +55,13 @@ export const fetchProducts = createAsyncThunk(
 export const addProduct = createAsyncThunk(
   'warehouse/addProduct',
   async (product) => {
-    const response = await axios.post('http://localhost:8000/products', product);
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    const response = await axios.post('http://localhost:8000/api/admin/products', product, {
+      headers: {
+        'X-User-Data': user
+      }
+    });
     return response.data;
   }
 );
@@ -56,7 +69,14 @@ export const addProduct = createAsyncThunk(
 export const updateProduct = createAsyncThunk(
   'warehouse/updateProduct',
   async ({ id, product }) => {
-    const response = await axios.put(`http://localhost:8000/products/${id}`, product);
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    const response = await axios.put(`http://localhost:8000/api/admin/products/${id}`, product, {
+      headers: {
+        'X-User-Data': user,
+        'Content-Type': 'application/json'
+      }
+    });
     return response.data;
   }
 );
@@ -64,7 +84,13 @@ export const updateProduct = createAsyncThunk(
 export const deleteProduct = createAsyncThunk(
   'warehouse/deleteProduct',
   async (id) => {
-    await axios.delete(`http://localhost:8000/products/${id}`);
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    await axios.delete(`http://localhost:8000/api/admin/products/${id}`, {
+      headers: {
+        'X-User-Data': user
+      }
+    });
     return id;
   }
 );
@@ -86,8 +112,14 @@ export const fetchUsers = createAsyncThunk(
 
 export const createUser = createAsyncThunk(
   'warehouse/createUser',
-  async (user) => {
-    const response = await axios.post('http://localhost:8000/api/admin/user', user);
+  async (userData) => {
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    const response = await axios.post('http://localhost:8000/api/admin/user', userData, {
+      headers: {
+        'X-User-Data': user
+      }
+    });
     return response.data;
   }
 );
@@ -95,16 +127,39 @@ export const createUser = createAsyncThunk(
 export const updateUser = createAsyncThunk(
   'warehouse/updateUser',
   async ({ id, user }) => {
-    const response = await axios.put(`http://localhost:8000/api/admin/user/${id}`, user);
-    return response.data;
+    const currentUser = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    try {
+      const response = await axios.put(`http://localhost:8000/api/admin/user/${id}`, user, {
+        headers: {
+          'X-User-Data': currentUser,
+          'Content-Type': 'application/json'
+        }
+      });
+      return response.data;
+    } catch (error) {
+      // Пробрасываем ошибку с сообщением от сервера
+      throw new Error(error.response?.data?.detail || 'Failed to update user');
+    }
   }
 );
 
 export const deleteUser = createAsyncThunk(
   'warehouse/deleteUser',
   async (id) => {
-    await axios.delete(`http://localhost:8000/api/admin/user/${id}`);
-    return id;
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    try {
+      const response = await axios.delete(`http://localhost:8000/api/admin/user/${id}`, {
+        headers: {
+          'X-User-Data': user
+        }
+      });
+      return id;
+    } catch (error) {
+      // Пробрасываем ошибку с сообщением от сервера
+      throw new Error(error.response?.data?.detail || 'Failed to delete user');
+    }
   }
 );
 

@@ -51,15 +51,12 @@ class DataBaseManager:
                 _s.refresh(new_user)  # Важно!
 
                 logging.info(f"Successfully created user with email {email}")
-
-                # Возвращаем словарь с данными пользователя
-                return {
-                    "id": new_user.id,
-                    "email": new_user.email,
-                    "name": new_user.name,
-                    "role": new_user.role,
-                    "created_at": new_user.created_at.isoformat()
-                }
+                
+                return UserResponse(id=new_user.id,
+                    email=new_user.email,
+                    name=new_user.name,
+                    role=new_user.role,
+                )
             except Exception as e:
                 _s.rollback()
                 print(f"Failed to create user: {e}")
@@ -118,7 +115,7 @@ class DataBaseManager:
             if not user:
                 logging.info(f"User with id {user_id} not found")
                 return None
-            
+
             # Обновляем только переданные поля
             for key, value in kwargs.items():
                 if hasattr(user, key) and value is not None:
@@ -127,11 +124,19 @@ class DataBaseManager:
                         user.password_hash = hash_password(value)
                     else:
                         setattr(user, key, value)
-            
+
             try:
                 _s.commit()
+                _s.refresh(user)  # Обновляем объект из базы
                 logging.info(f"Successfully updated user with id {user_id}")
-                return user
+
+                # Возвращаем UserResponse вместо SQLAlchemy объекта
+                return UserResponse(
+                    id=user.id,
+                    email=user.email,
+                    name=user.name,
+                    role=user.role
+                )
             except IntegrityError:
                 _s.rollback()
                 logging.error(f"Failed to update user with id {user_id}: IntegrityError")
@@ -185,7 +190,18 @@ class DataBaseManager:
     def get_all_products(self):
         with self.DBSession() as _s:
             products = _s.query(self.Product).all()
-            return products
+            return [
+                ProductResponse(
+                    id=product.id,
+                    name=product.product_name,
+                    quantity=product.quantity,
+                    zone=product.zone,
+                    row=product.row,
+                    shelf=product.shelf,
+                    created_at=product.created_at.isoformat() if product.created_at else None
+                )
+                for product in products
+            ]
     
     def update_product(self, product_id: str, **kwargs):
         with self.DBSession() as _s:

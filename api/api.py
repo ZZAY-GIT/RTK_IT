@@ -73,7 +73,6 @@ def get_current_user_from_client(
     x_user_data: str = Header(..., alias="X-User-Data")
 ):
     try:
-        
         # 1. Первый раз парсим JSON (убираем экранирование)
         first_parse = json.loads(x_user_data)
         
@@ -103,11 +102,18 @@ def admin_required(current_user: UserResponse = Depends(get_current_user_from_cl
     return current_user
 
 def operator_required(current_user: UserResponse = Depends(get_current_user_from_client)):
-    print(current_user.role)
     if current_user.role != "operator":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="operator access required"
+        )
+    return current_user
+
+def access_level(current_user: UserResponse = Depends(get_current_user_from_client)):
+    if current_user.role not in ["operator", "admin"]:  # ← ИСПРАВЬТЕ ЛОГИКУ
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Operator or admin access required"
         )
     return current_user
 
@@ -203,7 +209,7 @@ def get_inventory_history(
 
 # User endpoints
 @app.post("/api/admin/user", response_model=UserResponse)
-def create_user(user: UserCreate):#, current_user: UserResponse = Depends(admin_required)):
+def create_user(user: UserCreate, current_user: UserResponse = Depends(operator_required)):
     db_user = db.add_user(user.email, user.password, user.name, user.role)
     if not db_user:
         raise HTTPException(status_code=400, detail="User with this email already exists")
@@ -217,15 +223,20 @@ def get_all_users(current_user: UserResponse = Depends(operator_required)):
     return jsonable_encoder(users)
 
 @app.get("/api/admin/user/{user_id}", response_model=UserResponse)
-def get_user(user_id: int, current_user: UserResponse = Depends(admin_required)):
+def get_user(user_id: int, current_user: UserResponse = Depends(operator_required)):
     user = db.get_user_by_id(user_id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
 
 @app.put("/api/admin/user/{user_id}", response_model=UserResponse)
-def update_user(user_id: int, user_update: UserUpdate, current_user: UserResponse = Depends(admin_required)):
-    # Преобразуем Pydantic модель в словарь для передачи в метод обновления
+def update_user(user_id: int, user_update: UserUpdate, current_user: UserResponse = Depends(operator_required)):
+    # Проверяем, что пользователь не пытается изменить себя
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=400, 
+            detail="You cannot modify your own user account"
+        )
     update_data = user_update.dict(exclude_unset=True)
     user = db.update_user(user_id, **update_data)
     if not user:
@@ -234,42 +245,49 @@ def update_user(user_id: int, user_update: UserUpdate, current_user: UserRespons
 
 @app.delete("/api/admin/user/{user_id}")
 def delete_user(user_id: int, current_user: UserResponse = Depends(operator_required)):
+    # Проверяем, что пользователь не пытается удалить себя
+    if user_id == current_user.id:
+        raise HTTPException(
+            status_code=400, 
+            detail="You cannot delete your own user account"
+        )
+    
     success = db.delete_user(user_id)
     if not success:
         raise HTTPException(status_code=404, detail="User not found")
     return {"status": "success", "message": "User deleted successfully"}
 
 # Product endpoints
-@app.post("/api/admin/product", response_model=ProductResponse)
-def create_product(product: ProductCreate, current_user: UserResponse = Depends(admin_required)):
+@app.post("/api/admin/products", response_model=ProductResponse)  # ← products (мн.ч.)
+def create_product(product: ProductCreate, current_user: UserResponse = Depends(operator_required)):
     success = db.add_product(product.id, product.name, product.category, product.min_stock, product.optimal_stock)
     if not success:
         raise HTTPException(status_code=400, detail="Product with this ID already exists")
     return db.get_product(product.id)
 
-@app.get("/api/admin/product", response_model=List[ProductResponse])
-def get_all_products(current_user: UserResponse = Depends(admin_required)):
+@app.get("/api/admin/products", response_model=List[ProductResponse])  # ← products (мн.ч.)
+def get_all_products(current_user: UserResponse = Depends(operator_required)):
+    # УБЕРИТЕ дублирующую проверку - operator_required уже проверила роль
     products = db.get_all_products()
-    return products
+    return jsonable_encoder(products)
 
-@app.get("/api/admin/product/{product_id}", response_model=ProductResponse)
-def get_product(product_id: str, current_user: UserResponse = Depends(admin_required)):
+@app.get("/api/admin/products/{product_id}", response_model=ProductResponse)  # ← products (мн.ч.)
+def get_product(product_id: str, current_user: UserResponse = Depends(operator_required)):  # ← operator_required вместо admin_required
     product = db.get_product(product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     return product
 
-@app.put("/api/admin/product/{product_id}", response_model=ProductResponse)
-def update_product(product_id: str, product_update: ProductUpdate, current_user: UserResponse = Depends(admin_required)):
-    # Преобразуем Pydantic модель в словарь для передачи в метод обновления
+@app.put("/api/admin/products/{product_id}", response_model=ProductResponse)  # ← products (мн.ч.)
+def update_product(product_id: str, product_update: ProductUpdate, current_user: UserResponse = Depends(operator_required)):  # ← operator_required вместо admin_required
     update_data = product_update.dict(exclude_unset=True)
     product = db.update_product(product_id, **update_data)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     return product
 
-@app.delete("/api/admin/product/{product_id}")
-def delete_product(product_id: str, current_user: UserResponse = Depends(admin_required)):
+@app.delete("/api/admin/products/{product_id}")  # ← products (мн.ч.)
+def delete_product(product_id: str, current_user: UserResponse = Depends(operator_required)):  # ← operator_required вместо admin_required
     success = db.delete_product(product_id)
     if not success:
         raise HTTPException(status_code=404, detail="Product not found")

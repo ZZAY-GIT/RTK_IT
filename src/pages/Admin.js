@@ -39,7 +39,6 @@ function Admin({ onOpenCSVModal }) {
   });
   const availableZones = [...new Set(products.map(item => item.zone))].filter(zone => zone && zone !== 'N/A');
 
-
   // Проверка роли оператора
   const isOperator = user?.role === 'operator';
 
@@ -82,9 +81,9 @@ function Admin({ onOpenCSVModal }) {
       user.email.toLowerCase().includes(userSearch.toLowerCase())
   );
   const filteredRobots = robotsData.filter(
-  (robot) =>
-    (robot.id || '').toLowerCase().includes(robotSearch.toLowerCase()) ||  // Добавьте || '' для безопасности
-    (robot.zone || '').toLowerCase().includes(robotSearch.toLowerCase())
+    (robot) =>
+      (robot.id || '').toLowerCase().includes(robotSearch.toLowerCase()) ||
+      (robot.zone || '').toLowerCase().includes(robotSearch.toLowerCase())
   );
 
   // Пагинация
@@ -129,33 +128,61 @@ function Admin({ onOpenCSVModal }) {
   };
 
   // Обработчики для пользователей
-  const handleAddOrUpdateUser = (e) => {
+  const handleAddOrUpdateUser = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const userData = {
-      id: editingUser?.id || Date.now().toString(),
       email: formData.get('email'),
       password: formData.get('password'),
       name: formData.get('name'),
       role: formData.get('role'),
     };
-    if (editingUser) {
-      dispatch(updateUser(userData));
-    } else {
-      dispatch(createUser(userData));
+
+    console.log('📤 Отправка данных пользователя:', userData);
+    console.log('🆔 Редактируемый пользователь ID:', editingUser?.id);
+    console.log('🆔 Мой ID:', user?.id);
+
+    try {
+      if (editingUser) {
+        console.log('🔄 Редактирование пользователя:', editingUser.id);
+        await dispatch(updateUser({ 
+          id: editingUser.id, 
+          user: userData
+        })).unwrap();
+
+        console.log('✅ Пользователь успешно обновлен');
+      } else {
+        console.log('➕ Создание нового пользователя');
+        await dispatch(createUser(userData)).unwrap();
+        console.log('✅ Пользователь успешно создан');
+      }
+
+      setIsUserModalOpen(false);
+      setEditingUser(null);
+    } catch (error) {
+      console.error('❌ Ошибка:', error);
+      alert(`Ошибка: ${error.message}`);
+      // НЕ закрываем модальное окно при ошибке
+      // setIsUserModalOpen(false);
+      // setEditingUser(null);
     }
-    setIsUserModalOpen(false);
-    setEditingUser(null);
   };
 
   const handleEditUser = (user) => {
+    console.log('✏️ Редактирование пользователя:', user);
     setEditingUser(user);
     setIsUserModalOpen(true);
   };
 
-  const handleDeleteUser = (id) => {
+  const handleDeleteUser = async (id) => {
     if (window.confirm('Вы уверены, что хотите удалить пользователя?')) {
-      dispatch(deleteUser(id));
+      try {
+        await dispatch(deleteUser(id)).unwrap();
+        console.log('✅ Пользователь успешно удален');
+      } catch (error) {
+        console.error('❌ Ошибка удаления:', error);
+        alert(`Ошибка: ${error.message}`);
+      }
     }
   };
 
@@ -269,19 +296,19 @@ function Admin({ onOpenCSVModal }) {
                 </label>
                 <div className="relative">
                   <select
-                  value={filters.zones && filters.zones.length > 0 ? filters.zones[0] : ''}
-                  onChange={(e) => handleFilterChange({ 
-                    zones: e.target.value ? [e.target.value] : [] 
-                  })}
-                  className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
-                >
-                  <option value="">Все зоны</option>
-                  {availableZones.map((zone) => (
-                    <option key={zone} value={zone}>
-                      {zone}
-                    </option>
-                  ))}
-                </select>
+                    value={filters.zones && filters.zones.length > 0 ? filters.zones[0] : ''}
+                    onChange={(e) => handleFilterChange({ 
+                      zones: e.target.value ? [e.target.value] : [] 
+                    })}
+                    className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
+                  >
+                    <option value="">Все зоны</option>
+                    {availableZones.map((zone) => (
+                      <option key={zone} value={zone}>
+                        {zone}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
             </div>
@@ -304,7 +331,6 @@ function Admin({ onOpenCSVModal }) {
                   <tr key={product.id} className="border-t dark:border-gray-600">
                     <td className="p-2">
                       <input
-                      
                         type="checkbox"
                         checked={selectedItems.some((item) => item.id === product.id)}
                         onChange={(e) => {
@@ -654,10 +680,10 @@ function Admin({ onOpenCSVModal }) {
                   >
                     <option value="">Выберите зону</option>
                     {availableZones.map((zone) => (
-                    <option key={zone} value={zone}>
-                      {zone}
-                    </option>
-                  ))}
+                      <option key={zone} value={zone}>
+                        {zone}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
@@ -725,8 +751,7 @@ function Admin({ onOpenCSVModal }) {
                     <input
                       type="password"
                       name="password"
-                      defaultValue={editingUser?.pas || ''}
-                      required
+                      placeholder={editingUser ? "Оставьте пустым чтобы не менять" : "Введите пароль"}
                       className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
                     />
                   </div>
@@ -803,8 +828,7 @@ function Admin({ onOpenCSVModal }) {
                       <option value="inactive">Неактивен</option>
                     </select>
                   </div>
-                  {/*TODO*/}
-                  {/* <div>
+                  <div>
                     <label className="block text-sm text-gray-600 dark:text-gray-300">Зона</label>
                     <input
                       type="text"
@@ -813,23 +837,7 @@ function Admin({ onOpenCSVModal }) {
                       required
                       className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
                     />
-                  </div> */}
-
-                  <div>
-                  <label className="block text-sm text-gray-600 dark:text-gray-300">Зона</label>
-                  <select
-                    value={formData.zone}
-                    onChange={(e) => setFormData({ ...formData, zone: e.target.value })}
-                    className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
-                  >
-                    <option value="">Выберите зону</option>
-                    {availableZones.map((zone) => (
-                    <option key={zone} value={zone}>
-                      {zone}
-                    </option>
-                  ))}
-                  </select>
-                </div>
+                  </div>
                 </div>
                 <div className="mt-4 flex justify-end space-x-2">
                   <button
