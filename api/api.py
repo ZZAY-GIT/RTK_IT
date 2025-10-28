@@ -258,36 +258,44 @@ def delete_user(user_id: int, current_user: UserResponse = Depends(operator_requ
     return {"status": "success", "message": "User deleted successfully"}
 
 # Product endpoints
-@app.post("/api/admin/products", response_model=ProductResponse)  # ← products (мн.ч.)
+@app.post("/api/admin/products", response_model=ProductResponse)
 def create_product(product: ProductCreate, current_user: UserResponse = Depends(operator_required)):
-    success = db.add_product(product.id, product.name, product.category, product.min_stock, product.optimal_stock)
-    if not success:
-        raise HTTPException(status_code=400, detail="Product with this ID already exists")
-    return db.get_product(product.id)
+    # Теперь передаем только name, category, min_stock, optimal_stock
+    # ID генерируется автоматически
+    product_id = db.add_product(
+        name=product.name,
+        category=product.category,
+        min_stock=product.min_stock,
+        optimal_stock=product.optimal_stock
+    )
+    if not product_id:
+        raise HTTPException(status_code=400, detail="Failed to create product")
+    return db.get_product(product_id)
 
-@app.get("/api/admin/products", response_model=List[ProductResponse])  # ← products (мн.ч.)
-def get_all_products(current_user: UserResponse = Depends(operator_required)):
+@app.get("/api/admin/products", response_model=List[ProductResponse])
+def get_all_products(current_user: UserResponse = Depends(access_level)):
     # УБЕРИТЕ дублирующую проверку - operator_required уже проверила роль
     products = db.get_all_products()
     return jsonable_encoder(products)
 
-@app.get("/api/admin/products/{product_id}", response_model=ProductResponse)  # ← products (мн.ч.)
-def get_product(product_id: str, current_user: UserResponse = Depends(operator_required)):  # ← operator_required вместо admin_required
+@app.get("/api/admin/products/{product_id}", response_model=ProductResponse)
+def get_product(product_id: str, current_user: UserResponse = Depends(access_level)):
     product = db.get_product(product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     return product
 
-@app.put("/api/admin/products/{product_id}", response_model=ProductResponse)  # ← products (мн.ч.)
-def update_product(product_id: str, product_update: ProductUpdate, current_user: UserResponse = Depends(operator_required)):  # ← operator_required вместо admin_required
+@app.put("/api/admin/products/{product_id}", response_model=ProductResponse)
+def update_product(product_id: str, product_update: ProductUpdate, current_user: UserResponse = Depends(access_level)):
+    # Преобразуем Pydantic модель в словарь, исключая не установленные поля
     update_data = product_update.dict(exclude_unset=True)
     product = db.update_product(product_id, **update_data)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
     return product
 
-@app.delete("/api/admin/products/{product_id}")  # ← products (мн.ч.)
-def delete_product(product_id: str, current_user: UserResponse = Depends(operator_required)):  # ← operator_required вместо admin_required
+@app.delete("/api/admin/products/{product_id}")
+def delete_product(product_id: str, current_user: UserResponse = Depends(access_level)):
     success = db.delete_product(product_id)
     if not success:
         raise HTTPException(status_code=404, detail="Product not found")
@@ -295,27 +303,32 @@ def delete_product(product_id: str, current_user: UserResponse = Depends(operato
 
 # Robot endpoints
 @app.post("/api/admin/robot", response_model=RobotResponse)
-def create_robot(robot: RobotCreate, current_user: UserResponse = Depends(admin_required)):
-    db_robot = db.add_robot(robot.id, robot.status, robot.battery_level)
-    if not db_robot:
-        raise HTTPException(status_code=400, detail="Robot with this ID already exists")
-    return db_robot
+def create_robot(robot: RobotCreate, current_user: UserResponse = Depends(operator_required)):
+    robot_id = db.add_robot(
+        status=robot.status,
+        battery_level=robot.battery_level,
+        current_zone=robot.current_zone,
+        current_row=robot.current_row,
+        current_shelf=robot.current_shelf
+    )
+    if not robot_id:
+        raise HTTPException(status_code=400, detail="Failed to create robot")
+    return db.get_robot(robot_id)
 
 @app.get("/api/admin/robot", response_model=List[RobotResponse])
-def get_all_robots(current_user: UserResponse = Depends(admin_required)):
+def get_all_robots(current_user: UserResponse = Depends(access_level)):
     robots = db.get_all_robots()
-    return robots
+    return jsonable_encoder(robots)
 
 @app.get("/api/admin/robot/{robot_id}", response_model=RobotResponse)
-def get_robot(robot_id: str, current_user: UserResponse = Depends(admin_required)):
+def get_robot(robot_id: str, current_user: UserResponse = Depends(access_level)):
     robot = db.get_robot(robot_id)
     if not robot:
         raise HTTPException(status_code=404, detail="Robot not found")
     return robot
 
 @app.put("/api/admin/robot/{robot_id}", response_model=RobotResponse)
-def update_robot(robot_id: str, robot_update: RobotUpdate, current_user: UserResponse = Depends(admin_required)):
-    # Преобразуем Pydantic модель в словарь для передачи в метод обновления
+def update_robot(robot_id: str, robot_update: RobotUpdate, current_user: UserResponse = Depends(access_level)):
     update_data = robot_update.dict(exclude_unset=True)
     robot = db.update_robot(robot_id, **update_data)
     if not robot:
@@ -323,7 +336,7 @@ def update_robot(robot_id: str, robot_update: RobotUpdate, current_user: UserRes
     return robot
 
 @app.delete("/api/admin/robot/{robot_id}")
-def delete_robot(robot_id: str, current_user: UserResponse = Depends(admin_required)):
+def delete_robot(robot_id: str, current_user: UserResponse = Depends(access_level)):
     success = db.delete_robot(robot_id)
     if not success:
         raise HTTPException(status_code=404, detail="Robot not found")

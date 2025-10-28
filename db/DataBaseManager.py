@@ -160,10 +160,38 @@ class DataBaseManager:
                 return False
 
     # Методы Product
-    def add_product(self, id, name, category, min_stock, optimal_stock):
+    def add_product(self, name, category, min_stock, optimal_stock):
         with self.DBSession() as _s:
+            # Ищем максимальный существующий ID с префиксом TEL-
+            max_id_product = _s.query(self.Product).filter(
+                self.Product.id.like('TEL-%')
+            ).order_by(
+                self.Product.id.desc()
+            ).first()
+
+            # Генерируем новый ID
+            if max_id_product:
+                # Извлекаем числовую часть из последнего ID
+                last_number = int(max_id_product.id.split('-')[1])
+                new_number = last_number + 1
+            else:
+                # Если нет существующих продуктов с TEL-, начинаем с 1
+                new_number = 1
+
+            # Форматируем новый ID с ведущими нулями (минимум 4 цифры)
+            new_id = f"TEL-{new_number:04d}"
+
+            # Проверяем, не существует ли уже продукт с таким ID (на всякий случай)
+            existing_product = _s.query(self.Product).filter(self.Product.id == new_id).first()
+            if existing_product:
+                # Если существует, ищем следующий доступный номер
+                while existing_product:
+                    new_number += 1
+                    new_id = f"TEL-{new_number:04d}"
+                    existing_product = _s.query(self.Product).filter(self.Product.id == new_id).first()
+
             new_product = self.Product(
-                id=id,
+                id=new_id,
                 name=name,
                 category=category,
                 min_stock=min_stock,
@@ -172,7 +200,7 @@ class DataBaseManager:
             _s.add(new_product)
             try:
                 _s.commit()
-                return True
+                return new_id  # Возвращаем сгенерированный ID
             except IntegrityError:
                 _s.rollback()
                 return False
@@ -193,12 +221,10 @@ class DataBaseManager:
             return [
                 ProductResponse(
                     id=product.id,
-                    name=product.product_name,
-                    quantity=product.quantity,
-                    zone=product.zone,
-                    row=product.row,
-                    shelf=product.shelf,
-                    created_at=product.created_at.isoformat() if product.created_at else None
+                    name=product.name,
+                    category=product.category if product.category is not None else "",
+                    min_stock=product.min_stock if product.min_stock is not None else 0,
+                    optimal_stock=product.optimal_stock if product.optimal_stock is not None else 0
                 )
                 for product in products
             ]
@@ -209,16 +235,25 @@ class DataBaseManager:
             if not product:
                 logging.info(f"Product with id {product_id} not found")
                 return None
-            
+
             # Обновляем только переданные поля
             for key, value in kwargs.items():
                 if hasattr(product, key) and value is not None:
                     setattr(product, key, value)
-            
+
             try:
                 _s.commit()
+                _s.refresh(product)  # Обновляем объект из БД
                 logging.info(f"Successfully updated product with id {product_id}")
-                return product
+
+                # Возвращаем объект ProductResponse
+                return ProductResponse(
+                    id=product.id,
+                    name=product.name,
+                    category=product.category if product.category is not None else "",
+                    min_stock=product.min_stock if product.min_stock is not None else 0,
+                    optimal_stock=product.optimal_stock if product.optimal_stock is not None else 0
+                )
             except IntegrityError:
                 _s.rollback()
                 logging.error(f"Failed to update product with id {product_id}: IntegrityError")
@@ -242,81 +277,125 @@ class DataBaseManager:
                 return False
 
     # Методы Robot
-    def add_robot(self, robot_id: str, status: str = "active", battery_level: int = 100):
-        with self.DBSession() as _s:
-            # Проверяем существование робота
-            existing_robot = _s.query(self.Robot).filter(self.Robot.id == robot_id).first()
-
-            if existing_robot:
-                logging.info(f"Robot with id {robot_id} already exists")
-                # Робот существует
-                return existing_robot
-
-            # Робот не существует - создаем нового
-            new_robot = self.Robot(
-                id=robot_id,
-                status=status,
-                battery_level=battery_level,
-                last_update=datetime.now(),
-            )
-            _s.add(new_robot)
-            try:
-                _s.commit()
-                _s.refresh(new_robot)
-                logging.info(f"Successfully created robot with id {robot_id}")
-                return new_robot
-
-            except IntegrityError:
-                _s.rollback()
-                logging.error(f"Failed to create robot with id {robot_id}: IntegrityError")
-                return None
-
     def get_robot(self, robot_id: str):
         with self.DBSession() as _s:
             robot = _s.query(self.Robot).filter(self.Robot.id == robot_id).first()
             if robot:
                 logging.info(f"Robot with id {robot_id} found")
-                return robot
+                # Возвращаем RobotResponse с правильными полями
+                return RobotResponse(
+                    id=robot.id,
+                    status=robot.status,
+                    battery_level=robot.battery_level,
+                    current_zone=robot.current_zone if robot.current_zone is not None else "",
+                    current_row=robot.current_row if robot.current_row is not None else 0,
+                    current_shelf=robot.current_shelf if robot.current_shelf is not None else 0,
+                    last_update=robot.last_update.isoformat() if robot.last_update else ""
+                )
             else:
                 logging.info(f"Robot with id {robot_id} not found")
                 return None
+            
+    def add_robot(self, status: str, battery_level: int, current_zone: str = "", current_row: int = 0, current_shelf: int = 0):
+        with self.DBSession() as _s:
+            # Ищем максимальный существующий ID с префиксом RB-
+            max_id_robot = _s.query(self.Robot).filter(
+                self.Robot.id.like('RB-%')
+            ).order_by(
+                self.Robot.id.desc()
+            ).first()
+
+            # Генерируем новый ID
+            if max_id_robot:
+                last_number = int(max_id_robot.id.split('-')[1])
+                new_number = last_number + 1
+            else:
+                new_number = 1
+
+            new_id = f"RB-{new_number:04d}"
+
+            # Проверяем существование (на всякий случай)
+            existing_robot = _s.query(self.Robot).filter(self.Robot.id == new_id).first()
+            if existing_robot:
+                while existing_robot:
+                    new_number += 1
+                    new_id = f"RB-{new_number:04d}"
+                    existing_robot = _s.query(self.Robot).filter(self.Robot.id == new_id).first()
+
+            new_robot = self.Robot(
+                id=new_id,
+                status=status,
+                battery_level=battery_level,
+                current_zone=current_zone,
+                current_row=current_row,
+                current_shelf=current_shelf,
+                last_update=datetime.now()
+            )
+            _s.add(new_robot)
+            try:
+                _s.commit()
+                return new_id
+            except IntegrityError:
+                _s.rollback()
+                return False
 
     def get_all_robots(self):
         with self.DBSession() as _s:
             robots = _s.query(self.Robot).all()
-            return robots
-    
+            return [
+                RobotResponse(
+                    id=robot.id,
+                    status=robot.status,
+                    battery_level=robot.battery_level,
+                    current_zone=robot.current_zone if robot.current_zone is not None else "",
+                    current_row=robot.current_row if robot.current_row is not None else 0,
+                    current_shelf=robot.current_shelf if robot.current_shelf is not None else 0,
+                    last_update=robot.last_update.isoformat() if robot.last_update else ""
+                )
+                for robot in robots
+            ]
+
     def update_robot(self, robot_id: str, **kwargs):
         with self.DBSession() as _s:
             robot = _s.query(self.Robot).filter(self.Robot.id == robot_id).first()
             if not robot:
                 logging.info(f"Robot with id {robot_id} not found")
                 return None
-            
+
             # Обновляем только переданные поля
             for key, value in kwargs.items():
                 if hasattr(robot, key) and value is not None:
                     setattr(robot, key, value)
-            
+
             # Обновляем время последнего обновления
             robot.last_update = datetime.now()
-            
+
             try:
                 _s.commit()
+                _s.refresh(robot)
                 logging.info(f"Successfully updated robot with id {robot_id}")
-                return robot
+
+                return RobotResponse(
+                    id=robot.id,
+                    status=robot.status,
+                    battery_level=robot.battery_level,
+                    current_zone=robot.current_zone if robot.current_zone is not None else "",
+                    current_row=robot.current_row if robot.current_row is not None else 0,
+                    current_shelf=robot.current_shelf if robot.current_shelf is not None else 0,
+                    last_update=robot.last_update.isoformat() if robot.last_update else ""
+                )
             except IntegrityError:
                 _s.rollback()
                 logging.error(f"Failed to update robot with id {robot_id}: IntegrityError")
                 return None
-    
+
     def delete_robot(self, robot_id: str):
         with self.DBSession() as _s:
             robot = _s.query(self.Robot).filter(self.Robot.id == robot_id).first()
             if not robot:
                 logging.info(f"Robot with id {robot_id} not found")
                 return False
-            
+
             _s.delete(robot)
             try:
                 _s.commit()

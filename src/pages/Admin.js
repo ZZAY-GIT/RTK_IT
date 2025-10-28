@@ -15,7 +15,7 @@ function Admin({ onOpenCSVModal }) {
   const dispatch = useDispatch();
   const { products, users, robots, filters } = useSelector((state) => state.warehouse);
   const { theme } = useTheme();
-  const { user } = useAuth(); // Получаем текущего пользователя
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('products');
   const [pageSize, setPageSize] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
@@ -29,37 +29,14 @@ function Admin({ onOpenCSVModal }) {
   const [productSearch, setProductSearch] = useState('');
   const [userSearch, setUserSearch] = useState('');
   const [robotSearch, setRobotSearch] = useState('');
-  const [formData, setFormData] = useState({
-    product_id: '',
-    product_name: '',
-    quantity: '',
-    zone: '',
-    row: '',
-    shelf: '',
-  });
-  const availableZones = [...new Set(products.map(item => item.zone))].filter(zone => zone && zone !== 'N/A');
 
   // Проверка роли оператора
   const isOperator = user?.role === 'operator';
 
-  // Тестовые данные
-  const mockProducts = [
-    { id: 1, product_id: 'TEL-4567', product_name: 'Роутер RT-AC68U', quantity: 45, zone: 'A', row: 12, shelf: 3 },
-    { id: 2, product_id: 'TEL-8901', product_name: 'Модем DSL-2640U', quantity: 12, zone: 'B', row: 5, shelf: 2 },
-  ];
-  const mockUsers = [
-    { id: '1', email: 'user1@example.com', name: 'Иван Иванов', role: 'operator' },
-    { id: '2', email: 'user2@example.com', name: 'Анна Петрова', role: 'admin' },
-  ];
-  const mockRobots = [
-    { robotId: 'R1', name: 'Робот 1', status: 'active', zone: 'A1' },
-    { robotId: 'R2', name: 'Робот 2', status: 'inactive', zone: 'B2' },
-  ];
-
-  // Используем тестовые данные, если данные из Redux пустые
-  const productsData = products.length > 0 ? products : mockProducts;
-  const usersData = users.length > 0 ? users : mockUsers;
-  const robotsData = robots.length > 0 ? robots : mockRobots;
+  // Используем только данные из Redux
+  const productsData = products;
+  const usersData = users;
+  const robotsData = robots;
 
   useEffect(() => {
     dispatch(fetchProducts(filters));
@@ -72,8 +49,8 @@ function Admin({ onOpenCSVModal }) {
   // Фильтрация
   const filteredProducts = productsData.filter(
     (product) =>
-      product.product_id.toLowerCase().includes(productSearch.toLowerCase()) ||
-      product.product_name.toLowerCase().includes(productSearch.toLowerCase())
+      (product.id || '').toLowerCase().includes(productSearch.toLowerCase()) ||
+      (product.name || '').toLowerCase().includes(productSearch.toLowerCase())
   );
   const filteredUsers = usersData.filter(
     (user) =>
@@ -83,7 +60,7 @@ function Admin({ onOpenCSVModal }) {
   const filteredRobots = robotsData.filter(
     (robot) =>
       (robot.id || '').toLowerCase().includes(robotSearch.toLowerCase()) ||
-      (robot.zone || '').toLowerCase().includes(robotSearch.toLowerCase())
+      (robot.current_zone || '').toLowerCase().includes(robotSearch.toLowerCase())
   );
 
   // Пагинация
@@ -91,39 +68,74 @@ function Admin({ onOpenCSVModal }) {
   const paginatedUsers = filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const paginatedRobots = filteredRobots.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
-  const handleFilterChange = (newFilters) => {
-    dispatch(setFilters({ ...filters, ...newFilters }));
-    dispatch(fetchProducts({ ...filters, ...newFilters }));
+  // Функции отмены для модальных окон
+  const handleCancelProduct = () => {
+    setIsProductModalOpen(false);
+    setEditingProduct(null);
+  };
+
+  const handleCancelUser = () => {
+    setIsUserModalOpen(false);
+    setEditingUser(null);
+  };
+
+  const handleCancelRobot = () => {
+    setIsRobotModalOpen(false);
+    setEditingRobot(null);
   };
 
   // Обработчики для товаров
-  const handleAddOrUpdateProduct = () => {
-    if (editingProduct) {
-      dispatch(updateProduct({ id: editingProduct.id, product: formData }));
-    } else {
-      dispatch(addProduct({ ...formData, id: Date.now() }));
+  const handleAddOrUpdateProduct = async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const productData = {
+      name: formData.get('name'),
+      category: formData.get('category'),
+      min_stock: parseInt(formData.get('min_stock')),
+      optimal_stock: parseInt(formData.get('optimal_stock'))
+    };
+
+    console.log('📤 Отправка данных товара:', productData);
+
+    try {
+      if (editingProduct) {
+        // Для редактирования добавляем ID
+        productData.id = editingProduct.id;
+        console.log('🔄 Редактирование товара:', editingProduct.id);
+        await dispatch(updateProduct({ 
+          id: editingProduct.id, 
+          product: productData
+        })).unwrap();
+        console.log('✅ Товар успешно обновлен');
+      } else {
+        console.log('➕ Создание нового товара');
+        await dispatch(addProduct(productData)).unwrap();
+        console.log('✅ Товар успешно создан');
+      }
+
+      setIsProductModalOpen(false);
+      setEditingProduct(null);
+    } catch (error) {
+      console.error('❌ Ошибка:', error);
+      alert(`Ошибка: ${error.message}`);
     }
-    setIsProductModalOpen(false);
-    setEditingProduct(null);
-    setFormData({
-      product_id: '',
-      product_name: '',
-      quantity: '',
-      zone: '',
-      row: '',
-      shelf: '',
-    });
   };
 
   const handleEditProduct = (product) => {
+    console.log('✏️ Редактирование товара:', product);
     setEditingProduct(product);
-    setFormData(product);
     setIsProductModalOpen(true);
   };
 
-  const handleDeleteProduct = (id) => {
+  const handleDeleteProduct = async (id) => {
     if (window.confirm('Вы уверены, что хотите удалить товар?')) {
-      dispatch(deleteProduct(id));
+      try {
+        await dispatch(deleteProduct(id)).unwrap();
+        console.log('✅ Товар успешно удален');
+      } catch (error) {
+        console.error('❌ Ошибка удаления:', error);
+        alert(`Ошибка: ${error.message}`);
+      }
     }
   };
 
@@ -162,9 +174,6 @@ function Admin({ onOpenCSVModal }) {
     } catch (error) {
       console.error('❌ Ошибка:', error);
       alert(`Ошибка: ${error.message}`);
-      // НЕ закрываем модальное окно при ошибке
-      // setIsUserModalOpen(false);
-      // setEditingUser(null);
     }
   };
 
@@ -187,32 +196,57 @@ function Admin({ onOpenCSVModal }) {
   };
 
   // Обработчики для роботов
-  const handleAddOrUpdateRobot = (e) => {
+  const handleAddOrUpdateRobot = async (e) => {
     e.preventDefault();
     const formData = new FormData(e.target);
     const robotData = {
-      robotId: editingRobot?.robotId || `R${Date.now()}`,
-      name: formData.get('name'),
       status: formData.get('status'),
-      zone: formData.get('zone'),
+      battery_level: parseInt(formData.get('battery_level')),
+      current_zone: formData.get('current_zone'),
+      current_row: parseInt(formData.get('current_row')),
+      current_shelf: parseInt(formData.get('current_shelf'))
     };
-    if (editingRobot) {
-      dispatch(updateRobot(robotData));
-    } else {
-      dispatch(createRobot(robotData));
+
+    console.log('📤 Отправка данных робота:', robotData);
+
+    try {
+      if (editingRobot) {
+        console.log('🔄 Редактирование робота:', editingRobot.id);
+        await dispatch(updateRobot({ 
+          id: editingRobot.id, 
+          robot: robotData
+        })).unwrap();
+        console.log('✅ Робот успешно обновлен');
+      } else {
+        console.log('➕ Создание нового робота');
+        // УБРАНО поле id - генерируется на сервере автоматически
+        await dispatch(createRobot(robotData)).unwrap();
+        console.log('✅ Робот успешно создан');
+      }
+
+      setIsRobotModalOpen(false);
+      setEditingRobot(null);
+    } catch (error) {
+      console.error('❌ Ошибка:', error);
+      alert(`Ошибка: ${error.message}`);
     }
-    setIsRobotModalOpen(false);
-    setEditingRobot(null);
   };
 
   const handleEditRobot = (robot) => {
+    console.log('✏️ Редактирование робота:', robot);
     setEditingRobot(robot);
     setIsRobotModalOpen(true);
   };
 
-  const handleDeleteRobot = (robotId) => {
+  const handleDeleteRobot = async (id) => {
     if (window.confirm('Вы уверены, что хотите удалить робота?')) {
-      dispatch(deleteRobot(robotId));
+      try {
+        await dispatch(deleteRobot(id)).unwrap();
+        console.log('✅ Робот успешно удален');
+      } catch (error) {
+        console.error('❌ Ошибка удаления:', error);
+        alert(`Ошибка: ${error.message}`);
+      }
     }
   };
 
@@ -267,49 +301,29 @@ function Admin({ onOpenCSVModal }) {
                 Управление товарами
               </h2>
               <button
-                onClick={() => setIsProductModalOpen(true)}
+                onClick={() => {
+                  setEditingProduct(null);
+                  setIsProductModalOpen(true);
+                }}
                 className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 flex items-center"
               >
                 <PlusIcon className="h-5 w-5 mr-2" />
                 Добавить товар
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-4 mb-4">
-              <div>
-                <label className="block text-sm text-gray-600 dark:text-gray-300">
-                  Поиск по артикулу или названию
-                </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    value={productSearch}
-                    onChange={(e) => setProductSearch(e.target.value)}
-                    placeholder="Введите артикул или название"
-                    className="w-full p-2 pl-10 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
-                  />
-                  <SearchIcon className="absolute left-3 top-3 h-5 w-5 text-gray-400 dark:text-gray-300" />
-                </div>
-              </div>
-              <div>
-                <label className="block text-sm text-gray-600 dark:text-gray-300">
-                  Зоны
-                </label>
-                <div className="relative">
-                  <select
-                    value={filters.zones && filters.zones.length > 0 ? filters.zones[0] : ''}
-                    onChange={(e) => handleFilterChange({ 
-                      zones: e.target.value ? [e.target.value] : [] 
-                    })}
-                    className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
-                  >
-                    <option value="">Все зоны</option>
-                    {availableZones.map((zone) => (
-                      <option key={zone} value={zone}>
-                        {zone}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            <div className="mb-4">
+              <label className="block text-sm text-gray-600 dark:text-gray-300">
+                Поиск по ID или названию
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={productSearch}
+                  onChange={(e) => setProductSearch(e.target.value)}
+                  placeholder="Введите ID или название"
+                  className="w-full p-2 pl-10 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
+                />
+                <SearchIcon className="absolute left-3 top-3 h-5 w-5 text-gray-400 dark:text-gray-300" />
               </div>
             </div>
             <table className="w-full text-sm">
@@ -317,54 +331,60 @@ function Admin({ onOpenCSVModal }) {
                 <tr className="bg-gray-100 dark:bg-gray-700">
                   <th className="p-2 text-left">
                   </th>
-                  <th className="p-2 text-left text-gray-800 dark:text-gray-100">Артикул</th>
+                  <th className="p-2 text-left text-gray-800 dark:text-gray-100">ID</th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">Название</th>
-                  <th className="p-2 text-left text-gray-800 dark:text-gray-100">Количество</th>
-                  <th className="p-2 text-left text-gray-800 dark:text-gray-100">Зона</th>
-                  <th className="p-2 text-left text-gray-800 dark:text-gray-100">Стеллаж</th>
-                  <th className="p-2 text-left text-gray-800 dark:text-gray-100">Полка</th>
+                  <th className="p-2 text-left text-gray-800 dark:text-gray-100">Категория</th>
+                  <th className="p-2 text-left text-gray-800 dark:text-gray-100">Мин. запас</th>
+                  <th className="p-2 text-left text-gray-800 dark:text-gray-100">Опт. запас</th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">Действия</th>
                 </tr>
               </thead>
               <tbody>
-                {paginatedProducts.map((product) => (
-                  <tr key={product.id} className="border-t dark:border-gray-600">
-                    <td className="p-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.some((item) => item.id === product.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedItems([...selectedItems, product]);
-                          } else {
-                            setSelectedItems(selectedItems.filter((i) => i.id !== product.id));
-                          }
-                        }}
-                        className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
-                      />
-                    </td>
-                    <td className="p-2 text-gray-800 dark:text-gray-100">{product.product_id}</td>
-                    <td className="p-2 text-gray-800 dark:text-gray-100">{product.product_name}</td>
-                    <td className="p-2 text-gray-800 dark:text-gray-100">{product.quantity}</td>
-                    <td className="p-2 text-gray-800 dark:text-gray-100">{product.zone}</td>
-                    <td className="p-2 text-gray-800 dark:text-gray-100">{product.row}</td>
-                    <td className="p-2 text-gray-800 dark:text-gray-100">{product.shelf}</td>
-                    <td className="p-2 flex space-x-2">
-                      <button
-                        onClick={() => handleEditProduct(product)}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                      >
-                        <PencilIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteProduct(product.id)}
-                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
+                {paginatedProducts.length > 0 ? (
+                  paginatedProducts.map((product) => (
+                    <tr key={product.id} className="border-t dark:border-gray-600">
+                      <td className="p-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedItems.some((item) => item.id === product.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedItems([...selectedItems, product]);
+                            } else {
+                              setSelectedItems(selectedItems.filter((i) => i.id !== product.id));
+                            }
+                          }}
+                          className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
+                        />
+                      </td>
+                      <td className="p-2 text-gray-800 dark:text-gray-100">{product.id}</td>
+                      <td className="p-2 text-gray-800 dark:text-gray-100">{product.name}</td>
+                      <td className="p-2 text-gray-800 dark:text-gray-100">{product.category}</td>
+                      <td className="p-2 text-gray-800 dark:text-gray-100">{product.min_stock}</td>
+                      <td className="p-2 text-gray-800 dark:text-gray-100">{product.optimal_stock}</td>
+                      <td className="p-2 flex space-x-2">
+                        <button
+                          onClick={() => handleEditProduct(product)}
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                        >
+                          <PencilIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteProduct(product.id)}
+                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="7" className="p-4 text-center text-gray-500 dark:text-gray-400">
+                      Нет товаров. Нажмите "Добавить товар" чтобы создать первый товар.
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
             <div className="flex justify-between mt-4">
@@ -406,7 +426,10 @@ function Admin({ onOpenCSVModal }) {
                 Управление пользователями
               </h2>
               <button
-                onClick={() => setIsUserModalOpen(true)}
+                onClick={() => {
+                  setEditingUser(null);
+                  setIsUserModalOpen(true);
+                }}
                 className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 flex items-center"
               >
                 <PlusIcon className="h-5 w-5 mr-2" />
@@ -441,44 +464,52 @@ function Admin({ onOpenCSVModal }) {
                 </tr>
               </thead>
               <tbody>
-                {paginatedUsers.map((user) => (
-                  <tr key={user.id} className="border-t dark:border-gray-600">
-                    <td className="p-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.some((item) => item.id === user.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedItems([...selectedItems, user]);
-                          } else {
-                            setSelectedItems(selectedItems.filter((i) => i.id !== user.id));
-                          }
-                        }}
-                        className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
-                      />
-                    </td>
-                    <td className="p-2 text-gray-800 dark:text-gray-100">{user.id}</td>
-                    <td className="p-2 text-gray-800 dark:text-gray-100">{user.email}</td>
-                    <td className="p-2 text-gray-800 dark:text-gray-100">{user.name}</td>
-                    <td className="p-2 text-gray-800 dark:text-gray-100">
-                      {user.role === 'operator' ? 'Оператор' : user.role === 'admin' ? 'Админ' : 'Пользователь'}
-                    </td>
-                    <td className="p-2 flex space-x-2">
-                      <button
-                        onClick={() => handleEditUser(user)}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                      >
-                        <PencilIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteUser(user.id)}
-                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
+                {paginatedUsers.length > 0 ? (
+                  paginatedUsers.map((user) => (
+                    <tr key={user.id} className="border-t dark:border-gray-600">
+                      <td className="p-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedItems.some((item) => item.id === user.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedItems([...selectedItems, user]);
+                            } else {
+                              setSelectedItems(selectedItems.filter((i) => i.id !== user.id));
+                            }
+                          }}
+                          className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
+                        />
+                      </td>
+                      <td className="p-2 text-gray-800 dark:text-gray-100">{user.id}</td>
+                      <td className="p-2 text-gray-800 dark:text-gray-100">{user.email}</td>
+                      <td className="p-2 text-gray-800 dark:text-gray-100">{user.name}</td>
+                      <td className="p-2 text-gray-800 dark:text-gray-100">
+                        {user.role === 'operator' ? 'Оператор' : user.role === 'admin' ? 'Админ' : 'Пользователь'}
+                      </td>
+                      <td className="p-2 flex space-x-2">
+                        <button
+                          onClick={() => handleEditUser(user)}
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                        >
+                          <PencilIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteUser(user.id)}
+                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="6" className="p-4 text-center text-gray-500 dark:text-gray-400">
+                      Нет пользователей. Нажмите "Добавить пользователя" чтобы создать первого пользователя.
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
             <div className="flex justify-between mt-4">
@@ -520,7 +551,10 @@ function Admin({ onOpenCSVModal }) {
                 Управление роботами
               </h2>
               <button
-                onClick={() => setIsRobotModalOpen(true)}
+                onClick={() => {
+                  setEditingRobot(null);
+                  setIsRobotModalOpen(true);
+                }}
                 className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 flex items-center"
               >
                 <PlusIcon className="h-5 w-5 mr-2" />
@@ -548,51 +582,63 @@ function Admin({ onOpenCSVModal }) {
                   <th className="p-2 text-left">
                   </th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">ID робота</th>
-                  <th className="p-2 text-left text-gray-800 dark:text-gray-100">Название</th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">Статус</th>
+                  <th className="p-2 text-left text-gray-800 dark:text-gray-100">Батарея</th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">Зона</th>
+                  <th className="p-2 text-left text-gray-800 dark:text-gray-100">Ряд</th>
+                  <th className="p-2 text-left text-gray-800 dark:text-gray-100">Полка</th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">Действия</th>
                 </tr>
               </thead>
               <tbody>
-                {paginatedRobots.map((robot) => (
-                  <tr key={robot.robotId} className="border-t dark:border-gray-600">
-                    <td className="p-2">
-                      <input
-                        type="checkbox"
-                        checked={selectedItems.some((item) => item.robotId === robot.robotId)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedItems([...selectedItems, robot]);
-                          } else {
-                            setSelectedItems(selectedItems.filter((item) => item.robotId !== robot.robotId));
-                          }
-                        }}
-                        className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
-                      />
-                    </td>
-                    <td className="p-2 text-gray-800 dark:text-gray-100">{robot.robotId}</td>
-                    <td className="p-2 text-gray-800 dark:text-gray-100">{robot.name}</td>
-                    <td className="p-2 text-gray-800 dark:text-gray-100">
-                      {robot.status === 'active' ? 'Активен' : 'Неактивен'}
-                    </td>
-                    <td className="p-2 text-gray-800 dark:text-gray-100">{robot.zone}</td>
-                    <td className="p-2 flex space-x-2">
-                      <button
-                        onClick={() => handleEditRobot(robot)}
-                        className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
-                      >
-                        <PencilIcon className="h-5 w-5" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteRobot(robot.robotId)}
-                        className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
-                      >
-                        <TrashIcon className="h-5 w-5" />
-                      </button>
+                {paginatedRobots.length > 0 ? (
+                  paginatedRobots.map((robot) => (
+                    <tr key={robot.id} className="border-t dark:border-gray-600">
+                      <td className="p-2">
+                        <input
+                          type="checkbox"
+                          checked={selectedItems.some((item) => item.id === robot.id)}
+                          onChange={(e) => {
+                            if (e.target.checked) {
+                              setSelectedItems([...selectedItems, robot]);
+                            } else {
+                              setSelectedItems(selectedItems.filter((item) => item.id !== robot.id));
+                            }
+                          }}
+                          className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
+                        />
+                      </td>
+                      <td className="p-2 text-gray-800 dark:text-gray-100">{robot.id}</td>
+                      <td className="p-2 text-gray-800 dark:text-gray-100">
+                        {robot.status === 'active' ? 'Активен' : 'Неактивен'}
+                      </td>
+                      <td className="p-2 text-gray-800 dark:text-gray-100">{robot.battery_level || robot.battery}%</td>
+                      <td className="p-2 text-gray-800 dark:text-gray-100">{robot.current_zone}</td>
+                      <td className="p-2 text-gray-800 dark:text-gray-100">{robot.current_row}</td>
+                      <td className="p-2 text-gray-800 dark:text-gray-100">{robot.current_shelf}</td>
+                      <td className="p-2 flex space-x-2">
+                        <button
+                          onClick={() => handleEditRobot(robot)}
+                          className="text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300"
+                        >
+                          <PencilIcon className="h-5 w-5" />
+                        </button>
+                        <button
+                          onClick={() => handleDeleteRobot(robot.id)}
+                          className="text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                        >
+                          <TrashIcon className="h-5 w-5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="8" className="p-4 text-center text-gray-500 dark:text-gray-400">
+                      Нет роботов. Нажмите "Добавить робота" чтобы создать первого робота.
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
             <div className="flex justify-between mt-4">
@@ -643,86 +689,78 @@ function Admin({ onOpenCSVModal }) {
               <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">
                 {editingProduct ? 'Редактировать товар' : 'Добавить товар'}
               </h2>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-gray-600 dark:text-gray-300">Артикул</label>
-                  <input
-                    type="text"
-                    value={formData.product_id}
-                    onChange={(e) => setFormData({ ...formData, product_id: e.target.value })}
-                    className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
-                  />
+              <form onSubmit={handleAddOrUpdateProduct}>
+                <div className="space-y-4">
+                  {/* Поле ID только для редактирования */}
+                  {editingProduct && (
+                    <div>
+                      <label className="block text-sm text-gray-600 dark:text-gray-300">ID товара</label>
+                      <input
+                        type="text"
+                        name="id"
+                        defaultValue={editingProduct?.id || ''}
+                        disabled
+                        className="w-full p-2 border rounded-lg bg-gray-100 dark:bg-gray-600 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
+                      />
+                    </div>
+                  )}
+                  <div>
+                    <label className="block text-sm text-gray-600 dark:text-gray-300">Название</label>
+                    <input
+                      type="text"
+                      name="name"
+                      defaultValue={editingProduct?.name || ''}
+                      required
+                      className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 dark:text-gray-300">Категория</label>
+                    <input
+                      type="text"
+                      name="category"
+                      defaultValue={editingProduct?.category || ''}
+                      required
+                      className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 dark:text-gray-300">Мин. запас</label>
+                    <input
+                      type="number"
+                      name="min_stock"
+                      defaultValue={editingProduct?.min_stock || ''}
+                      required
+                      className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 dark:text-gray-300">Опт. запас</label>
+                    <input
+                      type="number"
+                      name="optimal_stock"
+                      defaultValue={editingProduct?.optimal_stock || ''}
+                      required
+                      className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
+                    />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm text-gray-600 dark:text-gray-300">Название</label>
-                  <input
-                    type="text"
-                    value={formData.product_name}
-                    onChange={(e) => setFormData({ ...formData, product_name: e.target.value })}
-                    className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 dark:text-gray-300">Количество</label>
-                  <input
-                    type="number"
-                    value={formData.quantity}
-                    onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                    className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 dark:text-gray-300">Зона</label>
-                  <select
-                    value={formData.zone}
-                    onChange={(e) => setFormData({ ...formData, zone: e.target.value })}
-                    className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
+                <div className="mt-4 flex justify-end space-x-2">
+                  <button
+                    type="button"
+                    onClick={handleCancelProduct}
+                    className="bg-gray-600 dark:bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600"
                   >
-                    <option value="">Выберите зону</option>
-                    {availableZones.map((zone) => (
-                      <option key={zone} value={zone}>
-                        {zone}
-                      </option>
-                    ))}
-                  </select>
+                    Отмена
+                  </button>
+                  <button
+                    type="submit"
+                    className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800"
+                  >
+                    Сохранить
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-sm text-gray-600 dark:text-gray-300">Стеллаж</label>
-                  <input
-                    type="number"
-                    value={formData.row}
-                    onChange={(e) => setFormData({ ...formData, row: e.target.value })}
-                    className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm text-gray-600 dark:text-gray-300">Полка</label>
-                  <input
-                    type="number"
-                    value={formData.shelf}
-                    onChange={(e) => setFormData({ ...formData, shelf: e.target.value })}
-                    className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
-                  />
-                </div>
-              </div>
-              <div className="mt-4 flex justify-end space-x-2">
-                <button
-                  onClick={() => {
-                    setIsProductModalOpen(false);
-                    setEditingProduct(null);
-                    setFormData({ product_id: '', product_name: '', quantity: '', zone: '', row: '', shelf: '' });
-                  }}
-                  className="bg-gray-600 dark:bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600"
-                >
-                  Отмена
-                </button>
-                <button
-                  onClick={handleAddOrUpdateProduct}
-                  className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800"
-                >
-                  Сохранить
-                </button>
-              </div>
+              </form>
             </div>
           </div>
         )}
@@ -781,7 +819,7 @@ function Admin({ onOpenCSVModal }) {
                 <div className="mt-4 flex justify-end space-x-2">
                   <button
                     type="button"
-                    onClick={() => setIsUserModalOpen(false)}
+                    onClick={handleCancelUser}
                     className="bg-gray-600 dark:bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600"
                   >
                     Отмена
@@ -807,16 +845,19 @@ function Admin({ onOpenCSVModal }) {
               </h2>
               <form onSubmit={handleAddOrUpdateRobot}>
                 <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm text-gray-600 dark:text-gray-300">Название</label>
-                    <input
-                      type="text"
-                      name="name"
-                      defaultValue={editingRobot?.name || ''}
-                      required
-                      className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
-                    />
-                  </div>
+                  {/* Поле ID только для редактирования - КАК У ПРОДУКТОВ */}
+                  {editingRobot && (
+                    <div>
+                      <label className="block text-sm text-gray-600 dark:text-gray-300">ID робота</label>
+                      <input
+                        type="text"
+                        name="id"
+                        defaultValue={editingRobot?.id || ''}
+                        disabled
+                        className="w-full p-2 border rounded-lg bg-gray-100 dark:bg-gray-600 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm text-gray-600 dark:text-gray-300">Статус</label>
                     <select
@@ -829,12 +870,41 @@ function Admin({ onOpenCSVModal }) {
                     </select>
                   </div>
                   <div>
+                    <label className="block text-sm text-gray-600 dark:text-gray-300">Уровень батареи (%)</label>
+                    <input
+                      type="number"
+                      name="battery_level"
+                      min="0"
+                      max="100"
+                      defaultValue={editingRobot?.battery_level || editingRobot?.battery || 100}
+                      required
+                      className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
                     <label className="block text-sm text-gray-600 dark:text-gray-300">Зона</label>
                     <input
                       type="text"
-                      name="zone"
-                      defaultValue={editingRobot?.zone || ''}
-                      required
+                      name="current_zone"
+                      defaultValue={editingRobot?.current_zone || ''}
+                      className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 dark:text-gray-300">Ряд</label>
+                    <input
+                      type="number"
+                      name="current_row"
+                      defaultValue={editingRobot?.current_row || ''}
+                      className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600 dark:text-gray-300">Полка</label>
+                    <input
+                      type="number"
+                      name="current_shelf"
+                      defaultValue={editingRobot?.current_shelf || ''}
                       className="w-full p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
                     />
                   </div>
@@ -842,7 +912,7 @@ function Admin({ onOpenCSVModal }) {
                 <div className="mt-4 flex justify-end space-x-2">
                   <button
                     type="button"
-                    onClick={() => setIsRobotModalOpen(false)}
+                    onClick={handleCancelRobot}
                     className="bg-gray-600 dark:bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600"
                   >
                     Отмена

@@ -57,7 +57,9 @@ export const addProduct = createAsyncThunk(
   async (product) => {
     const user = localStorage.getItem('user') || sessionStorage.getItem('user');
     
-    const response = await axios.post('http://localhost:8000/api/admin/products', product, {
+    const { id, ...productData } = product;
+    
+    const response = await axios.post('http://localhost:8000/api/admin/products', productData, {
       headers: {
         'X-User-Data': user
       }
@@ -65,7 +67,6 @@ export const addProduct = createAsyncThunk(
     return response.data;
   }
 );
-
 export const updateProduct = createAsyncThunk(
   'warehouse/updateProduct',
   async ({ id, product }) => {
@@ -164,18 +165,31 @@ export const deleteUser = createAsyncThunk(
 );
 
 // =============== Robots ===============
-export const fetchRobots = createAsyncThunk(
-  'warehouse/fetchRobots',
-  async () => {
-    const response = await axios.get('http://localhost:8000/api/robots');
+export const createRobot = createAsyncThunk(
+  'warehouse/createRobot',
+  async (robot) => {
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    const response = await axios.post('http://localhost:8000/api/admin/robot', robot, {
+      headers: {
+        'X-User-Data': user  // ← ДОБАВИТЬ этот заголовок
+      }
+    });
     return response.data;
   }
 );
 
-export const createRobot = createAsyncThunk(
-  'warehouse/createRobot',
-  async (robot) => {
-    const response = await axios.post('http://localhost:8000/api/robots', robot);
+// Также исправьте другие запросы для роботов:
+export const fetchRobots = createAsyncThunk(
+  'warehouse/fetchRobots',
+  async () => {
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    const response = await axios.get('http://localhost:8000/api/admin/robot', {
+      headers: {
+        'X-User-Data': JSON.stringify(user)  // ← ДОБАВИТЬ
+      }
+    });
     return response.data;
   }
 );
@@ -183,7 +197,14 @@ export const createRobot = createAsyncThunk(
 export const updateRobot = createAsyncThunk(
   'warehouse/updateRobot',
   async ({ id, robot }) => {
-    const response = await axios.put(`http://localhost:8000/api/robots/${id}`, robot);
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    const response = await axios.put(`http://localhost:8000/api/admin/robot/${id}`, robot, {
+      headers: {
+        'X-User-Data': user,  // ← ДОБАВИТЬ
+        'Content-Type': 'application/json'
+      }
+    });
     return response.data;
   }
 );
@@ -191,7 +212,13 @@ export const updateRobot = createAsyncThunk(
 export const deleteRobot = createAsyncThunk(
   'warehouse/deleteRobot',
   async (id) => {
-    await axios.delete(`http://localhost:8000/api/robots/${id}`);
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    
+    await axios.delete(`http://localhost:8000/api/admin/robot/${id}`, {
+      headers: {
+        'X-User-Data': user  // ← ДОБАВИТЬ
+      }
+    });
     return id;
   }
 );
