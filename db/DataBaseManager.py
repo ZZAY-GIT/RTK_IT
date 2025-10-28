@@ -1,12 +1,13 @@
 from db.models import Base, User, Robot, Product, InventoryHistory, AIPrediction
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import create_engine, func
+from sqlalchemy import create_engine, func, desc
 import logging
 from sqlalchemy.exc import IntegrityError
 from settings import settings
 from datetime import datetime, timedelta
 import bcrypt
 from datetime import datetime
+from typing import List, Dict
 
 
 class DataBaseManager:
@@ -465,7 +466,143 @@ class DataBaseManager:
             except IntegrityError:
                 _s.rollback()
         #self._commit_record(new_inventory_history)
+
+    # def add_ai_prediction(self, predictions: List[Dict], confidence_score=0.75):
+    #     """
+    #     Добавляет предсказания AI в таблицу ai_predictions.
+    #     predictions: список словарей с полями product_id, days_until_stockout, recommended_order
+    #     confidence_score: уровень достоверности предсказания
+    #     """
+    #     with self.DBSession() as _s:
+    #         print(predictions)
+    #         prediction_date = predictions[-1].get("created_at", None)
+    #         print(prediction_date)
+    #         predictions = predictions[:-1]
+    #         print(predictions)
+    #         for prediction in predictions:
+    #             product_id = prediction.get("product_id", None)
+    #             days_until_stockout = prediction.get("days_until_stockout", None)
+    #             recommended_order = prediction.get("recommended_order", None)
+    #             # Создание новой записи
+    #             new_prediction = self.AIPrediction(
+    #                 product_id=product_id,
+    #                 days_until_stockout=days_until_stockout,
+    #                 recommended_order=recommended_order,
+    #                 confidence_score=confidence_score,
+    #                 prediction_date=prediction_date
+    #             )
+    #             _s.add(new_prediction)
+    #             logging.info(f"Added AI prediction for product {product_id}")
+
+    #         try:
+    #             _s.commit()
+    #             logging.info(f"Successfull")
+
+    #         except IntegrityError:
+    #             _s.rollback()
+    #             logging.error("Failed to add AI predictions: IntegrityError")
+
+    # Внутри класса DataBaseManager
+
+    def add_ai_prediction(self, predictions: List[Dict]):
+        """
+        Добавляет предсказания AI в таблицу ai_predictions.
+        Если 'created_at' отсутствует, генерирует его автоматически.
+        """
+        if not predictions:
+            logging.warning("Received empty predictions list, nothing to save.")
+            return []
+
+        with self.DBSession() as _s:
+            saved_predictions_data = []
+            
+            for prediction in predictions:
+                product_id = prediction.get("product_id")
+                days_until_stockout = prediction.get("days_until_stockout")
+                recommended_order = prediction.get("recommended_order")
+                
+                # ГЕНЕРИРУЕМ ДАТУ, если ее нет в запросе
+                prediction_date = prediction.get("created_at") or datetime.now()
+
+                new_prediction = self.AIPrediction(
+                    product_id=product_id,
+                    days_until_stockout=days_until_stockout,
+                    recommended_order=recommended_order,
+                    confidence_score=0.75,
+                    prediction_date=prediction_date
+                )
+                _s.add(new_prediction)
+                
+                # ВСЕГДА возвращаем дату в формате ISO
+                saved_predictions_data.append({
+                    "product_id": product_id,
+                    "days_until_stockout": days_until_stockout,
+                    "recommended_order": recommended_order,
+                    "created_at": prediction_date.isoformat() # <-- Всегда будет строка
+                })
+                logging.info(f"Added AI prediction for product {product_id}")
+
+            try:
+                _s.commit()
+                logging.info(f"Successfully added {len(predictions)} AI predictions.")
+                return saved_predictions_data
+            except IntegrityError as e:
+                _s.rollback()
+                logging.error(f"Failed to add AI predictions: IntegrityError - {str(e)}")
+                return None
+
+    def get_ai_predictions(self):
+        with self.DBSession() as _s:
+            prediction = _s.query(self.AIPrediction).order_by(self.AIPrediction.prediction_date.desc()).limit(10).all()
+            if prediction:
+                logging.info(f"Found latest prediction for product_id: {prediction.product_id}, date: {prediction.prediction_date}")
+                return {
+                    "id": prediction.id,
+                    "product_id": prediction.product_id,
+                    "prediction_date": prediction.prediction_date.isoformat() if prediction.prediction_date else None,
+                    "days_until_stockout": prediction.days_until_stockout,
+                    "recommended_order": prediction.recommended_order,
+                    "confidence_score": float(prediction.confidence_score) if prediction.confidence_score else None,
+                    "created_at": prediction.created_at.isoformat() if prediction.created_at else None
+                }
+            else:
+                logging.info(f"Entry not found")
+                return None
+
         
+    # def get_products_unique(self, historical_data):
+    #     unique_product_id = []
+    #     for product in historical_data['status': "CRITICAL"]:
+    #         product_id = historical_data["product_id"]
+    #         if not(product_id in unique_product_id):
+    #             unique_product_id.append(product_id)
+    #     inventory_data = {}
+    #     with self.DBSession() as _s:
+    #         for product_id in unique_product_id:
+    #             query = _s.query(self.InventoryHistory).filter(self.product_id == product_id).first()
+    #             inventory_data[product_id] = query["quantity"]
+    #         return inventory_data
+    
+    def get_products_unique(self, historical_data):
+        inventory_data = {}
+        
+        # Обрабатываем historical_data (предполагается, что это список словарей)
+        for item in historical_data:
+            # Проверяем статус "CRITICAL"
+            if item.get('status') == "CRITICAL":
+                product_id = item.get('product_id')
+                quantity = item.get('quantity')
+                
+                # Если продукт еще не добавлен или добавляем с максимальным количеством
+                if product_id and product_id not in inventory_data:
+                    inventory_data[product_id] = quantity
+                elif product_id in inventory_data:
+                    # Если хотим брать максимальное количество для дубликатов
+                    inventory_data[product_id] = max(inventory_data[product_id], quantity)
+        
+        return inventory_data
+        
+
     # Сводка работы роботов по фильтрам
     def get_filter_inventory_history(self, from_date=None, to_date=None, zone=None, shelf=None, status=None, category=None):
         

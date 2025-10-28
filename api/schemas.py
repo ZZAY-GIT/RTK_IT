@@ -1,5 +1,5 @@
 # schemas.py
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import List, Dict, Optional
 
 class UserCreate(BaseModel):
@@ -91,12 +91,12 @@ class RobotData(BaseModel):
     next_checkpoint: str
 
 class PredictRequest(BaseModel):
-    period_days: int
+    period_days: int = Field(default=7)
     categories: List[Dict]
 
 class PredictResponse(BaseModel):
     predictions: List[Dict]
-    confidence: float
+    confidence: float = Field(default=0.75)
 
 class LoginRequest(BaseModel):
     email: str

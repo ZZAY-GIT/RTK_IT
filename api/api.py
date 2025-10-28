@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 import asyncio
 from contextlib import asynccontextmanager
 from db.DataBaseManager import db
@@ -19,6 +19,7 @@ from api.schemas import (
 )
 
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from ai.yandex_gpt_client import yandex_client
 
 app = FastAPI(title="Simple FastAPI Service", version="1.0.0")
 
@@ -95,12 +96,95 @@ def login(form_data: LoginRequest):
 
 @app.post("/api/ai/predict/post", response_model=PredictResponse)
 def predict(request: PredictRequest):
-    db.add_predictions(request)
+    """
+    Принимает предсказания от внешнего источника и сохраняет их в БД.
+    """
+    # 1. Извлекаем список предсказаний из тела запроса
+    predictions_list = request.categories
+    
+    # 2. Вызываем исправленный метод БД, передавая ему список предсказаний.
+    #    Метод теперь будет возвращать сохраненные данные или None в случае ошибки.
+    saved_predictions = db.add_ai_prediction(predictions_list)
+    
+    # 3. Проверяем результат и возвращаем ответ
+    if saved_predictions is None:
+        # Если БД вернула ошибку, возвращаем серверную ошибку
+        raise HTTPException(status_code=500, detail="Failed to save AI predictions to the database")
+
+    # 4. Формируем и возвращаем успешный ответ в соответствии с моделью PredictResponse
+    return PredictResponse(predictions=saved_predictions, confidence=0.75)
+
+# @app.get("/api/ai/predict", response_model=PredictResponse)
+# def predict():
+#     # current_date = datetime.now().date()
+#     # from_date = current_date - timedelta(days=3)
+#     # historical_data = db.get_filter_inventory_history(from_date, current_date)
+#     # inventory_data = db.get_products_unique(historical_data)
+#     # request.categories = inventory_data
+#     # predictions = yandex_client.get_prediction(request)
+#     # return predictions
+#     current_date = datetime.now().date()
+#     from_date = current_date - timedelta(days=3)
+#     historical_data = db.get_filter_inventory_history(
+#         from_date=from_date,
+#         to_date=current_date,
+#         status="CRITICAL"
+#     )
+#     inventory_data = db.get_products_unique(historical_data)
+#     predictions = yandex_client.get_prediction(inventory_data, historical_data)
+#     request = PredictResponse(predictions=predictions, confidence=0.7)
+#     return request
 
 @app.get("/api/ai/predict", response_model=PredictResponse)
-def predict(request: PredictRequest):
-    predictions = db.get_last_predictions()
-    return predictions
+def get_predict():
+    """
+    Генерирует новые предсказания с помощью AI, сохраняет их в БД и возвращает.
+    """
+    # 1. Получаем исторические данные для анализа
+    current_date = datetime.now().date()
+    from_date = current_date - timedelta(days=3)
+    
+    historical_data = db.get_filter_inventory_history(
+        from_date=from_date,
+        to_date=current_date,
+        status="CRITICAL"
+    )
+    
+    if not historical_data:
+        # Если нет критических остатков, предсказывать нечего
+        logging.info("No critical inventory data found for prediction.")
+        return PredictResponse(predictions=[], confidence=0.0)
+
+    inventory_data = db.get_products_unique(historical_data)
+    
+    if not inventory_data:
+        # Если уникальных продуктов нет, тоже нечего предсказывать
+        logging.info("No unique products found in critical inventory.")
+        return PredictResponse(predictions=[], confidence=0.0)
+
+    # 2. Запрашиваем предсказания у AI
+    predictions_from_ai = yandex_client.get_prediction(inventory_data, historical_data)
+    
+    # 3. Обрабатываем результат от AI
+    if predictions_from_ai is None:
+        # Если AI не смог сгенерировать предсказания, возвращаем ошибку сервера
+        raise HTTPException(
+            status_code=503, 
+            detail="AI service is currently unavailable or returned an error."
+        )
+    
+    # 4. Сохраняем предсказания в базу данных с помощью исправленного метода
+    saved_predictions = db.add_ai_prediction(predictions_from_ai)
+    
+    if saved_predictions is None:
+        # Если не удалось сохранить в БД, возвращаем ошибку
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to save AI predictions to the database."
+        )
+    
+    # 5. Возвращаем успешный ответ
+    return PredictResponse(predictions=saved_predictions, confidence=0.75)
 
 @app.post("/api/robots/data")
 def receive_robot_data(data: dict):
