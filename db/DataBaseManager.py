@@ -676,8 +676,7 @@ class DataBaseManager:
                 "status": "error",
                 "error": f"Internal server error: {str(e)}"
             }
-    
-=======
+
     # Работа с CSV файлом
     def process_csv_file(self, file_csv):
         """Обрабатывает CSV файл и добавляет данные в базу"""
@@ -831,7 +830,6 @@ class DataBaseManager:
             except IntegrityError as e:
                 _s.rollback()
 
->>>>>>> a81dbd3b0913f23d336299dd205669d9e090f01c
     def add_ai_prediction(self, predictions: List[Dict]):
         """
         Добавляет предсказания AI в таблицу ai_predictions.
@@ -910,7 +908,7 @@ class DataBaseManager:
     #             inventory_data[product_id] = query["quantity"]
     #         return inventory_data
 
->>>>>>> a81dbd3b0913f23d336299dd205669d9e090f01c
+
     def get_products_unique(self, historical_data):
         inventory_data = {}
 
