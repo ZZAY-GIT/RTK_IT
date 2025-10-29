@@ -14,6 +14,7 @@ from api.schemas import (
     UserResponse,
     ProductResponse,
     RobotResponse,
+    PredictResponse,
 )
 import pandas as pd
 import io
@@ -884,6 +885,29 @@ class DataBaseManager:
                 logging.error(f"Failed to add AI predictions: IntegrityError - {str(e)}")
                 return None
 
+    def get_data_for_predict(self):
+        current_date = datetime.now().date()
+        from_date = current_date - timedelta(days=3)
+        
+        historical_data = db.get_filter_inventory_history(
+            from_date=from_date,
+            to_date=current_date,
+            status="CRITICAL"
+        )
+        
+        if not historical_data:
+            # Если нет критических остатков, предсказывать нечего
+            logging.info("No critical inventory data found for prediction.")
+            return PredictResponse(predictions=[], confidence=0.0)
+
+        inventory_data = db.get_products_unique(historical_data)
+        
+        if not inventory_data:
+            # Если уникальных продуктов нет, тоже нечего предсказывать
+            logging.info("No unique products found in critical inventory.")
+            return PredictResponse(predictions=[], confidence=0.0)
+        return inventory_data, historical_data
+    
     def get_ai_predictions(self):
         with self.DBSession() as _s:
             prediction = _s.query(self.AIPrediction).order_by(self.AIPrediction.prediction_date.desc()).limit(10).all()
