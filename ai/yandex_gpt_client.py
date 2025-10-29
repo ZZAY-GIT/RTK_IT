@@ -18,8 +18,8 @@ class YandexGPTClient:
     def send_to_ai(self, inventory_data, historical_data):
         prompt = f"""
         Analyze warehouse inventory data and predict stock levels for next 7 days.
-        Current data: {json.dumps(inventory_data)}
-        Historical consumption pattern: {json.dumps(historical_data)}
+        Current data: {inventory_data}
+        Historical consumption pattern: {historical_data}
         Provide predictions in JSON format with fields: product_id, days_until_stockout, recommended_order. 
         Return ONLY valid JSON array, no additional text or markdown.
         Example: """ + """[{"product_id": "TEL-4567", "days_until_stockout": 9, "recommended_order": 100}, {"product_id": "TEL-8901", "days_until_stockout": 4, "recommended_order": 50}]

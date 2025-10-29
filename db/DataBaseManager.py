@@ -783,7 +783,7 @@ class DataBaseManager:
                 if ai_pred:
                     result_json['recommended_order'] = ai_pred.recommended_order
                     result_json['discrepancy'] = abs(inv_his.quantity - ai_pred.recommended_order)
-                    result_json['prediction_confidence'] = ai_pred.confidence
+                    result_json['prediction_confidence'] = ai_pred.confidence_score
                 else:
                     result_json['recommended_order'] = 0
                     result_json['discrepancy'] = inv_his.quantity

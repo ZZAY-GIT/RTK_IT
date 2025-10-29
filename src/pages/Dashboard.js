@@ -15,7 +15,6 @@ function Dashboard({ onOpenCSVModal }) {
   const { robots, zones, recentScans, aiPredictions, websocketStatus, loading, error } = useSelector((state) => state.warehouse);
   const { theme } = useTheme();
   const [activityHistory, setActivityHistory] = useState([]);
-  console.log('aiPredictions from Redux state:', aiPredictions);
   useWarehouseWebSocket();
 
   useEffect(() => {
