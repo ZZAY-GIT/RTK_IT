@@ -208,9 +208,10 @@ __marimo__/
 
 
 /node_modules
+
 .DS_Store
 .env
-.python_version
+.python-version
 .vscode
 .bin/
 
