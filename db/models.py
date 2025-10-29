@@ -43,11 +43,11 @@ class InventoryHistory(Base):
     
     id = Column(Integer, primary_key=True, autoincrement=True)
     robot_id = Column(String(50), ForeignKey('robots.id'))
-    product_id = Column(String(50), ForeignKey('products.id'))
+    product_id = Column(String(50), ForeignKey('products.id'), nullable=True)
     quantity = Column(Integer, nullable=False)
     zone = Column(String(10), nullable=False)
     row_number = Column(Integer)
-    shelf_number = Column(Integer)
+    shelf_number = Column(Integer, nullable=True)
     status = Column(String(50))
     scanned_at = Column(DateTime, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)

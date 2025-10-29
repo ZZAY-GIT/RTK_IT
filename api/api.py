@@ -222,44 +222,34 @@ def receive_robot_data(data: dict):
     
 
 @app.post("/api/inventory/import")
-def add_csv_file(file_csv: UploadFile = File(...)):
-    if not file_csv.filename.lower().endswith('.csv'):
+def import_inventory_csv(file: UploadFile = File(...), current_user: UserResponse = Depends(access_level)):
+    """
+    Импорт инвентарных данных из CSV файла.
+    """
+    # Проверяем что файл CSV
+    if not file.filename.lower().endswith('.csv'):
         raise HTTPException(status_code=400, detail="Only CSV files are allowed")
     
     try:
-        # Читаем файл
-        contents = file_csv.file.read()
-        csv_text = contents.decode('utf-8')
+        # Читаем файл здесь и передаем содержимое в метод БД
+        contents = file.file.read()
+        csv_content = contents.decode('utf-8')
         
-        # Используем StringIO для pandas
-        df = pd.read_csv(io.StringIO(csv_text), delimiter=';')
-        records = df.to_dict('records')
+        # Передаем содержимое CSV в метод БД
+        result = db.process_csv_inventory_import(csv_content)
         
-        # Добавляем записи в БД
-        success_count = 0
-        for record in records:
-            try:
-                db.add_robot_data_csv(record)
-                success_count += 1
-            except Exception as e:
-                logging.error(f"Error with record {record}: {e}")
-                continue
+        if result["status"] == "error":
+            raise HTTPException(status_code=400, detail=result["error"])
         
-        return {
-            "status": "success", 
-            "records_processed": success_count,
-            "total_records": len(records)
-        }
+        return result
         
-    except pd.errors.EmptyDataError:
-        raise HTTPException(status_code=400, detail="CSV file is empty")
-    except pd.errors.ParserError:
-        raise HTTPException(status_code=400, detail="Error parsing CSV file")
+    except UnicodeDecodeError:
+        raise HTTPException(status_code=400, detail="File encoding error. Please use UTF-8 encoded CSV file.")
     except Exception as e:
-        logging.error(f"CSV import error: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        logging.error(f"File processing error: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error during file processing")
     finally:
-        file_csv.file.close()
+        file.file.close()
     
 
 @app.get("/api/dashboard/current")

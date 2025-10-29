@@ -14,6 +14,8 @@ from api.schemas import (
     RobotCreate, RobotUpdate, RobotResponse,
     PredictRequest, PredictResponse, LoginRequest
 )
+import pandas as pd
+import io
 
 
 class DataBaseManager:
@@ -569,63 +571,112 @@ class DataBaseManager:
                     for scan, product_name in recent_scans  # Распаковываем кортеж
                 ]
             }
-
-    def add_robot_data_csv(self, robot_data):
-        with self.DBSession() as _s:
-            new_inventory_history = self.InventoryHistory(
-                robot_id=robot_data.get("robot_id", None),
-                zone=robot_data.get("zone", None),
-                row_number=robot_data.get("row", None),
-                shelf_number=robot_data.get("shelf", None),
-                product_id=robot_data.get("product_id", None),
-                quantity=robot_data.get("quantity", None),
-                status=robot_data.get("status", None),
-                scanned_at=robot_data.get("date", None)
-            )
-            _s.add(new_inventory_history)
-            try:
-                _s.commit()
-            except IntegrityError:
-                _s.rollback()
-        #self._commit_record(new_inventory_history)
-
-    # def add_ai_prediction(self, predictions: List[Dict], confidence_score=0.75):
-    #     """
-    #     Добавляет предсказания AI в таблицу ai_predictions.
-    #     predictions: список словарей с полями product_id, days_until_stockout, recommended_order
-    #     confidence_score: уровень достоверности предсказания
-    #     """
-    #     with self.DBSession() as _s:
-    #         print(predictions)
-    #         prediction_date = predictions[-1].get("created_at", None)
-    #         print(prediction_date)
-    #         predictions = predictions[:-1]
-    #         print(predictions)
-    #         for prediction in predictions:
-    #             product_id = prediction.get("product_id", None)
-    #             days_until_stockout = prediction.get("days_until_stockout", None)
-    #             recommended_order = prediction.get("recommended_order", None)
-    #             # Создание новой записи
-    #             new_prediction = self.AIPrediction(
-    #                 product_id=product_id,
-    #                 days_until_stockout=days_until_stockout,
-    #                 recommended_order=recommended_order,
-    #                 confidence_score=confidence_score,
-    #                 prediction_date=prediction_date
-    #             )
-    #             _s.add(new_prediction)
-    #             logging.info(f"Added AI prediction for product {product_id}")
-
-    #         try:
-    #             _s.commit()
-    #             logging.info(f"Successfull")
-
-    #         except IntegrityError:
-    #             _s.rollback()
-    #             logging.error("Failed to add AI predictions: IntegrityError")
-
-    # Внутри класса DataBaseManager
-
+        
+    def process_csv_inventory_import(self, csv_content: str) -> Dict[str, any]:
+        """
+        Обрабатывает CSV данные для импорта инвентаря
+        """
+        try:
+            import pandas as pd
+            import io
+            
+            # Парсим CSV
+            df = pd.read_csv(io.StringIO(csv_content), delimiter=';')
+            
+            # Проверяем обязательные колонки
+            required_columns = ['product_id', 'product_name', 'quantity']
+            missing_columns = [col for col in required_columns if col not in df.columns]
+            if missing_columns:
+                return {
+                    "status": "error",
+                    "error": f"Missing required columns: {', '.join(missing_columns)}"
+                }
+            
+            records = df.where(pd.notnull(df), None).to_dict('records')
+            
+            success_count = 0
+            error_details = []
+            
+            with self.DBSession() as _s:
+                for i, record in enumerate(records, 1):
+                    try:
+                        product_id = record.get('product_id')
+                        product_name = record.get('product_name')
+                        quantity = record.get('quantity')
+                        zone = record.get('zone')
+                        row_number = record.get('row')
+                        shelf_number = record.get('shelf')
+                        scanned_at_str = record.get('date')
+                        
+                        # Парсим дату
+                        if scanned_at_str:
+                            try:
+                                scanned_at = datetime.fromisoformat(scanned_at_str.replace('Z', '+00:00'))
+                            except ValueError:
+                                scanned_at = datetime.now()
+                        else:
+                            scanned_at = datetime.now()
+                        
+                        # Проверяем/добавляем продукт
+                        product = _s.query(self.Product).filter(self.Product.id == product_id).first()
+                        if not product:
+                            # Создаем продукт напрямую в этой сессии
+                            new_product = self.Product(
+                                id=product_id,
+                                name=product_name,
+                                category=None,
+                                min_stock=10,
+                                optimal_stock=100
+                            )
+                            _s.add(new_product)
+                        
+                        # ✅ robot_id оставляем пустым (NULL)
+                        new_inventory = self.InventoryHistory(
+                            robot_id=None,  # Оставляем пустым
+                            zone=zone,
+                            row_number=row_number,
+                            shelf_number=shelf_number,
+                            product_id=product_id,
+                            quantity=quantity,
+                            status="OK",
+                            scanned_at=scanned_at
+                        )
+                        _s.add(new_inventory)
+                        success_count += 1
+                        
+                    except Exception as e:
+                        error_details.append(f"Row {i}: {str(e)}")
+                        logging.error(f"Error processing CSV record {record}: {e}")
+                        continue
+                
+                try:
+                    _s.commit()
+                    logging.info(f"✅ Successfully imported {success_count} records from CSV")
+                    
+                    return {
+                        "status": "success" if success_count > 0 else "partial_success",
+                        "records_processed": success_count,
+                        "total_records": len(records),
+                        "errors_count": len(error_details),
+                        "error_details": error_details if error_details else None,
+                        "message": f"Imported {success_count} out of {len(records)} records"
+                    }
+                    
+                except Exception as e:
+                    _s.rollback()
+                    logging.error(f"❌ Failed to import CSV data: {e}")
+                    return {
+                        "status": "error",
+                        "error": f"Database commit failed: {str(e)}"
+                    }
+                    
+        except Exception as e:
+            logging.error(f"❌ CSV import error: {e}")
+            return {
+                "status": "error",
+                "error": f"Internal server error: {str(e)}"
+            }
+    
     def add_ai_prediction(self, predictions: List[Dict]):
         """
         Добавляет предсказания AI в таблицу ai_predictions.
@@ -690,20 +741,6 @@ class DataBaseManager:
             else:
                 logging.info(f"Entry not found")
                 return None
-
-        
-    # def get_products_unique(self, historical_data):
-    #     unique_product_id = []
-    #     for product in historical_data['status': "CRITICAL"]:
-    #         product_id = historical_data["product_id"]
-    #         if not(product_id in unique_product_id):
-    #             unique_product_id.append(product_id)
-    #     inventory_data = {}
-    #     with self.DBSession() as _s:
-    #         for product_id in unique_product_id:
-    #             query = _s.query(self.InventoryHistory).filter(self.product_id == product_id).first()
-    #             inventory_data[product_id] = query["quantity"]
-    #         return inventory_data
     
     def get_products_unique(self, historical_data):
         inventory_data = {}
@@ -790,9 +827,6 @@ class DataBaseManager:
                     result_json['prediction_confidence'] = None
                 fileter_history.append(result_json)
             return fileter_history
-        
-    # dashboard
-    # Blok 2, функуциии распределить потом в удобном порядке
     # Сводка количества активных роботов, возвращает кортеж формата (n активных роботов, m всего роботов)
     def get_active_robots(self): # Не проверено
         with self.DBSession() as _s:

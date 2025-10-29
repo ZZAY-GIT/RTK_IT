@@ -23,7 +23,17 @@ export const uploadCSV = createAsyncThunk(
   async (file) => {
     const formData = new FormData();
     formData.append('file', file);
-    const response = await axios.post('http://localhost:8000/upload-csv', formData);
+    
+    const user = localStorage.getItem('user') || sessionStorage.getItem('user');
+    const headers = {
+      'Content-Type': 'multipart/form-data'
+    };
+    
+    if (user) {
+      headers['X-User-Data'] = user;
+    }
+    
+    const response = await axios.post('http://localhost:8000/api/inventory/import', formData, { headers });
     return response.data;
   }
 );
@@ -334,8 +344,26 @@ const warehouseSlice = createSlice({
         state.loading = false;
         state.error = action.error.message;
       })
-      .addCase(uploadCSV.fulfilled, (state) => {
+      .addCase(uploadCSV.fulfilled, (state, action) => {
         state.loading = false;
+        
+        // Обрабатываем структуру ответа от бэкенда
+        const result = action.payload;
+        
+        if (result.status === "success" || result.status === "partial_success") {
+          // Показываем уведомление об успешной загрузке
+          console.log(`✅ CSV импорт: ${result.message}`);
+          
+          // Можно обновить данные после успешного импорта
+          // Например, перезагрузить историю или дашборд
+        } else {
+          console.error(`❌ CSV импорт: ${result.error}`);
+        }
+      })
+      .addCase(uploadCSV.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message;
+        console.error('❌ Ошибка при загрузке CSV:', action.error.message);
       })
       
       // Products
