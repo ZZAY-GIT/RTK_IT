@@ -25,67 +25,6 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from ai.yandex_gpt_client import yandex_client
 
 
-async def fetch_robots_last_hour_data():
-    """
-    Получает данные о роботах за последний час,
-    делит время на интервалы и считает количество активных роботов.
-    """
-    # === 1. Время (за последний час) ===
-    now = datetime.now(timezone.utc)
-    hour_ago = now - timedelta(hours=1)  # ← реальный час
-
-    # === 2. Получаем данные из БД ===
-    history = db.get_filter_inventory_history(
-        from_date=hour_ago,
-        to_date=now
-    )
-
-    if not history:
-        return {i: 0 for i in range(6)}
-
-    # === 3. Разделяем час на 6 интервалов по 10 минут ===
-    intervals = []
-    start = hour_ago.replace(microsecond=0, tzinfo=timezone.utc)
-    for i in range(6):
-        s = start + timedelta(minutes=i * 10)
-        e = s + timedelta(minutes=10)
-        if e > now:
-            e = now
-        intervals.append((s, e))
-
-    active_robots_by_slot = defaultdict(set)
-
-    for item in history:
-        raw_time = item.get('scanned_at')
-        robot_id = item.get('robot_id')
-        if not raw_time or not robot_id:
-            continue
-
-        # === Преобразуем время ===
-        try:
-            if isinstance(raw_time, datetime):
-                scanned_at = raw_time
-            elif 'T' in raw_time:
-                scanned_at = datetime.fromisoformat(raw_time.replace('Z', '+00:00'))
-            else:
-                scanned_at = datetime.strptime(raw_time, "%Y-%m-%d %H:%M:%S")
-        except Exception:
-            continue
-
-        # === Делаем scanned_at aware (UTC) ===
-        if scanned_at.tzinfo is None:
-            scanned_at = scanned_at.replace(tzinfo=timezone.utc)
-
-        # === Проверяем интервалы ===
-        for idx, (s, e) in enumerate(intervals):
-            if s <= scanned_at < e:
-                active_robots_by_slot[idx].add(robot_id)
-                break
-
-    result = {i: len(active_robots_by_slot[i]) for i in range(6)}
-    return result
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Запуск при старте приложения
@@ -224,8 +163,7 @@ def receive_robot_data(data: dict):
 
 @app.get("/api/robots/active-by-interval")
 async def get_active_robots_by_interval():
-    data = await fetch_robots_last_hour_data()
-    return {"active_robots": data}
+    return db.fetch_robots_last_hour_data()
 
 @app.post("/api/inventory/import")
 def import_inventory_csv(file: UploadFile = File(...), current_user: UserResponse = Depends(access_level)):
