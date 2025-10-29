@@ -89,6 +89,7 @@ function Admin({ onOpenCSVModal }) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const productData = {
+      id: formData.get('id'),
       name: formData.get('name'),
       category: formData.get('category'),
       min_stock: parseInt(formData.get('min_stock')),
@@ -99,11 +100,9 @@ function Admin({ onOpenCSVModal }) {
 
     try {
       if (editingProduct) {
-        // Для редактирования добавляем ID
-        productData.id = editingProduct.id;
         console.log('🔄 Редактирование товара:', editingProduct.id);
-        await dispatch(updateProduct({ 
-          id: editingProduct.id, 
+        await dispatch(updateProduct({
+          id: editingProduct.id,
           product: productData
         })).unwrap();
         console.log('✅ Товар успешно обновлен');
@@ -117,6 +116,7 @@ function Admin({ onOpenCSVModal }) {
       setEditingProduct(null);
     } catch (error) {
       console.error('❌ Ошибка:', error);
+      console.log(productData)
       alert(`Ошибка: ${error.message}`);
     }
   };
@@ -200,6 +200,7 @@ function Admin({ onOpenCSVModal }) {
     e.preventDefault();
     const formData = new FormData(e.target);
     const robotData = {
+      id: formData.get('id'),
       status: formData.get('status'),
       battery_level: parseInt(formData.get('battery_level')),
       current_zone: formData.get('current_zone'),
@@ -219,7 +220,6 @@ function Admin({ onOpenCSVModal }) {
         console.log('✅ Робот успешно обновлен');
       } else {
         console.log('➕ Создание нового робота');
-        // УБРАНО поле id - генерируется на сервере автоматически
         await dispatch(createRobot(robotData)).unwrap();
         console.log('✅ Робот успешно создан');
       }
@@ -691,19 +691,20 @@ function Admin({ onOpenCSVModal }) {
               </h2>
               <form onSubmit={handleAddOrUpdateProduct}>
                 <div className="space-y-4">
-                  {/* Поле ID только для редактирования */}
-                  {editingProduct && (
                     <div>
                       <label className="block text-sm text-gray-600 dark:text-gray-300">ID товара</label>
                       <input
                         type="text"
                         name="id"
                         defaultValue={editingProduct?.id || ''}
-                        disabled
-                        className="w-full p-2 border rounded-lg bg-gray-100 dark:bg-gray-600 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
+                        readOnly={!!editingProduct}
+                        className={`w-full p-2 border rounded-lg border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 ${
+                          editingProduct 
+                            ? 'bg-gray-100 dark:bg-gray-600 cursor-not-allowed'  // ← СЕРЫЙ ФОН ПРИ РЕДАКТИРОВАНИИ
+                            : 'bg-white dark:bg-gray-700'                        // ← ОБЫЧНЫЙ ФОН ПРИ СОЗДАНИИ
+                        }`}
                       />
                     </div>
-                  )}
                   <div>
                     <label className="block text-sm text-gray-600 dark:text-gray-300">Название</label>
                     <input
@@ -845,19 +846,21 @@ function Admin({ onOpenCSVModal }) {
               </h2>
               <form onSubmit={handleAddOrUpdateRobot}>
                 <div className="space-y-4">
-                  {/* Поле ID только для редактирования - КАК У ПРОДУКТОВ */}
-                  {editingRobot && (
-                    <div>
-                      <label className="block text-sm text-gray-600 dark:text-gray-300">ID робота</label>
-                      <input
-                        type="text"
-                        name="id"
-                        defaultValue={editingRobot?.id || ''}
-                        disabled
-                        className="w-full p-2 border rounded-lg bg-gray-100 dark:bg-gray-600 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
-                      />
-                    </div>
-                  )}
+                  {/* Поле ID - всегда видимое, но заблокированное при редактировании */}
+                  <div>
+                    <label className="block text-sm text-gray-600 dark:text-gray-300">ID робота</label>
+                    <input
+                      type="text"
+                      name="id"
+                      defaultValue={editingRobot?.id || ''}
+                      readOnly={!!editingRobot}
+                      className={`w-full p-2 border rounded-lg border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 ${
+                        editingRobot 
+                          ? 'bg-gray-100 dark:bg-gray-600 cursor-not-allowed'
+                          : 'bg-white dark:bg-gray-700'
+                      }`}
+                    />
+                  </div>
                   <div>
                     <label className="block text-sm text-gray-600 dark:text-gray-300">Статус</label>
                     <select

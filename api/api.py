@@ -9,8 +9,8 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, WebSocket, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from auth.auth_service import auth_service
 from typing import List, Dict, Optional
-import io
 import json
+import io
 from settings import settings
 import logging
 from api.websocket_manager import ws_manager, ws_handler
@@ -206,27 +206,6 @@ def predict(request: PredictRequest):
     # 4. Формируем и возвращаем успешный ответ в соответствии с моделью PredictResponse
     return PredictResponse(predictions=saved_predictions, confidence=0.75)
 
-# @app.get("/api/ai/predict", response_model=PredictResponse)
-# def predict():
-#     # current_date = datetime.now().date()
-#     # from_date = current_date - timedelta(days=3)
-#     # historical_data = db.get_filter_inventory_history(from_date, current_date)
-#     # inventory_data = db.get_products_unique(historical_data)
-#     # request.categories = inventory_data
-#     # predictions = yandex_client.get_prediction(request)
-#     # return predictions
-#     current_date = datetime.now().date()
-#     from_date = current_date - timedelta(days=3)
-#     historical_data = db.get_filter_inventory_history(
-#         from_date=from_date,
-#         to_date=current_date,
-#         status="CRITICAL"
-#     )
-#     inventory_data = db.get_products_unique(historical_data)
-#     predictions = yandex_client.get_prediction(inventory_data, historical_data)
-#     request = PredictResponse(predictions=predictions, confidence=0.7)
-#     return request
-
 @app.get("/api/ai/predict", response_model=PredictResponse)
 def get_predict():
     """
@@ -290,43 +269,7 @@ async def get_active_robots_by_interval():
 
 @app.post("/api/inventory/import")
 def add_csv_file(file_csv: UploadFile = File(...)):
-    if not file_csv.filename.lower().endswith('.csv'):
-        raise HTTPException(status_code=400, detail="Only CSV files are allowed")
-    
-    try:
-        # Читаем файл
-        contents = file_csv.file.read()
-        csv_text = contents.decode('utf-8')
-        
-        # Используем StringIO для pandas
-        df = pd.read_csv(io.StringIO(csv_text), delimiter=';')
-        records = df.to_dict('records')
-        
-        # Добавляем записи в БД
-        success_count = 0
-        for record in records:
-            try:
-                db.add_robot_data_csv(record)
-                success_count += 1
-            except Exception as e:
-                logging.error(f"Error with record {record}: {e}")
-                continue
-        
-        return {
-            "status": "success", 
-            "records_processed": success_count,
-            "total_records": len(records)
-        }
-        
-    except pd.errors.EmptyDataError:
-        raise HTTPException(status_code=400, detail="CSV file is empty")
-    except pd.errors.ParserError:
-        raise HTTPException(status_code=400, detail="Error parsing CSV file")
-    except Exception as e:
-        logging.error(f"CSV import error: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
-    finally:
-        file_csv.file.close()
+    pass
     
 
 @app.get("/api/dashboard/current")
@@ -406,6 +349,7 @@ def delete_user(user_id: int, current_user: UserResponse = Depends(operator_requ
 @app.post("/api/admin/products", response_model=ProductResponse)
 def create_product(product: ProductCreate, current_user: UserResponse = Depends(operator_required)):
     product_id = db.add_product(
+        id=product.id,
         name=product.name,
         category=product.category,
         min_stock=product.min_stock,
@@ -440,6 +384,7 @@ def delete_product(product_id: str, current_user: UserResponse = Depends(access_
 @app.post("/api/admin/robot", response_model=RobotResponse)
 def create_robot(robot: RobotCreate, current_user: UserResponse = Depends(operator_required)):
     robot_id = db.add_robot(
+        id=robot.id,
         status=robot.status,
         battery_level=robot.battery_level,
         current_zone=robot.current_zone,

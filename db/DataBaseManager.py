@@ -8,11 +8,12 @@ from datetime import datetime, timedelta, timezone
 import bcrypt
 from datetime import datetime
 from typing import List, Dict
+import pandas as pd
+import io
 from api.schemas import (
-    UserCreate, UserUpdate, UserResponse,
-    ProductCreate, ProductUpdate, ProductResponse,
-    RobotCreate, RobotUpdate, RobotResponse,
-    PredictRequest, PredictResponse, LoginRequest
+    UserResponse,
+    ProductResponse,
+    RobotResponse,
 )
 
 
@@ -161,7 +162,7 @@ class DataBaseManager:
                 return False
 
     # Методы Product
-    def add_product(self, name, category, min_stock, optimal_stock):
+    def add_product(self, id, name, category, min_stock, optimal_stock):
         with self.DBSession() as _s:
             # Ищем максимальный существующий ID с префиксом TEL-
             max_id_product = _s.query(self.Product).filter(
@@ -192,7 +193,7 @@ class DataBaseManager:
                     existing_product = _s.query(self.Product).filter(self.Product.id == new_id).first()
 
             new_product = self.Product(
-                id=new_id,
+                id=id if id else new_id,
                 name=name,
                 category=category,
                 min_stock=min_stock,
@@ -201,7 +202,7 @@ class DataBaseManager:
             _s.add(new_product)
             try:
                 _s.commit()
-                return new_id  # Возвращаем сгенерированный ID
+                return id if id else new_id  # Возвращаем сгенерированный ID
             except IntegrityError:
                 _s.rollback()
                 return False
@@ -297,7 +298,7 @@ class DataBaseManager:
                 logging.info(f"Robot with id {robot_id} not found")
                 return None
             
-    def add_robot(self, status: str, battery_level: int, current_zone: str = "", current_row: int = 0, current_shelf: int = 0):
+    def add_robot(self, id: str, status: str, battery_level: int, current_zone: str = "", current_row: int = 0, current_shelf: int = 0):
         with self.DBSession() as _s:
             # Ищем максимальный существующий ID с префиксом RB-
             max_id_robot = _s.query(self.Robot).filter(
@@ -322,9 +323,8 @@ class DataBaseManager:
                     new_number += 1
                     new_id = f"RB-{new_number:04d}"
                     existing_robot = _s.query(self.Robot).filter(self.Robot.id == new_id).first()
-
             new_robot = self.Robot(
-                id=new_id,
+                id=id if id else new_id,
                 status=status,
                 battery_level=battery_level,
                 current_zone=current_zone,
@@ -335,7 +335,7 @@ class DataBaseManager:
             _s.add(new_robot)
             try:
                 _s.commit()
-                return new_id
+                return id if id else new_id
             except IntegrityError:
                 _s.rollback()
                 return False
@@ -569,62 +569,159 @@ class DataBaseManager:
                     for scan, product_name in recent_scans  # Распаковываем кортеж
                 ]
             }
+        
+    # Работа с CSV файлом
+    def process_csv_file(self, file_csv):
+        """Обрабатывает CSV файл и добавляет данные в базу"""
+        try:
+            # Читаем файл
+            contents = file_csv.file.read()
+            csv_text = contents.decode('utf-8')
+            
+            # Используем StringIO для pandas
+            df = pd.read_csv(io.StringIO(csv_text), delimiter=';')
+            
+            # ДЕБАГ: Проверяем что получили
+            print(f"DataFrame shape: {df.shape}")
+            print(f"DataFrame columns: {df.columns.tolist()}")
+            print(f"DataFrame head:\n{df.head()}")
+            
+            # Передаем DataFrame напрямую, а не records
+            return self.add_robot_data_csv_from_dataframe(df)
+            
+        except Exception as e:
+            logging.error(f"Error processing CSV file: {e}")
+            raise
 
-    def add_robot_data_csv(self, robot_data):
+    def add_robot_data_csv_from_dataframe(self, df):
+        """Добавляет записи из DataFrame в базу данных"""
         with self.DBSession() as _s:
-            new_inventory_history = self.InventoryHistory(
-                robot_id=robot_data.get("robot_id", None),
-                zone=robot_data.get("zone", None),
-                row_number=robot_data.get("row", None),
-                shelf_number=robot_data.get("shelf", None),
-                product_id=robot_data.get("product_id", None),
-                quantity=robot_data.get("quantity", None),
-                status=robot_data.get("status", None),
-                scanned_at=robot_data.get("date", None)
-            )
-            _s.add(new_inventory_history)
+            success_count = 0
+            total_records = len(df)
+            errors = []
+            
+            # ДИАГНОСТИКА: Какие колонки есть в DataFrame
+            available_columns = df.columns.tolist()
+            print(f"Available columns in CSV: {available_columns}")
+            
+            # Дефолтные значения
+            default_status = "NORMAL"
+            
+            for index, row in df.iterrows():
+                try:
+                    # ДЕБАГ: Выводим строку
+                    print(f"Processing row {index + 1}: {row.to_dict()}")
+                    
+                    # Получаем значения из CSV
+                    product_id = str(row['product_id']).strip() if pd.notna(row.get('product_id')) else None
+                    product_name = str(row['product_name']).strip() if pd.notna(row.get('product_name')) else "Unknown Product"
+                    zone = str(row['zone']).strip() if pd.notna(row.get('zone')) else "UNKNOWN"
+                    
+                    # Обрабатываем числовые поля
+                    try:
+                        quantity = int(float(row['quantity'])) if pd.notna(row.get('quantity')) else 0
+                    except (ValueError, TypeError):
+                        quantity = 0
+                    
+                    try:
+                        row_number = int(float(row['row'])) if pd.notna(row.get('row')) else None
+                    except (ValueError, TypeError):
+                        row_number = None
+                    
+                    try:
+                        shelf_number = int(float(row['shelf'])) if pd.notna(row.get('shelf')) else None
+                    except (ValueError, TypeError):
+                        shelf_number = None
+                    
+                    # Обрабатываем дату
+                    date_str = row.get('date')
+                    scanned_at = None
+                    if pd.notna(date_str) and date_str:
+                        try:
+                            date_str_clean = str(date_str).strip()
+                            if 'T' in date_str_clean:
+                                scanned_at = datetime.fromisoformat(date_str_clean.replace('Z', '+00:00'))
+                            else:
+                                # Пробуем разные форматы даты
+                                try:
+                                    scanned_at = datetime.strptime(date_str_clean, '%Y-%m-%d')
+                                except ValueError:
+                                    try:
+                                        scanned_at = datetime.strptime(date_str_clean, '%d.%m.%Y')
+                                    except ValueError:
+                                        scanned_at = datetime.now()
+                        except (ValueError, TypeError) as e:
+                            print(f"Date parsing error for '{date_str}': {e}")
+                            scanned_at = datetime.now()
+                    else:
+                        scanned_at = datetime.now()
+                    
+                    # Проверяем обязательные поля
+                    if not product_id:
+                        errors.append(f"Row {index+1}: Missing product_id")
+                        continue
+                    
+                    # 1. ПРОВЕРЯЕМ/СОЗДАЕМ ПРОДУКТ
+                    existing_product = _s.query(self.Product).filter(self.Product.id == product_id).first()
+                    if not existing_product:
+                        # Создаем новый продукт
+                        try:
+                            new_product = self.Product(
+                                id=product_id,
+                                name=product_name,
+                                category="Electronics",  # можно сделать умное определение категории
+                                min_stock=10,
+                                optimal_stock=50
+                            )
+                            _s.add(new_product)
+                            print(f"✅ Created new product: {product_id} - {product_name}")
+                        except Exception as e:
+                            errors.append(f"Row {index+1}: Failed to create product {product_id}: {str(e)}")
+                            continue
+                    else:
+                        # Обновляем имя продукта если оно изменилось
+                        if existing_product.name != product_name:
+                            existing_product.name = product_name
+                            print(f"ℹ️ Updated product name: {product_id} - {product_name}")
+                    
+                    # 2. СОЗДАЕМ ЗАПИСЬ ИНВЕНТАРИЗАЦИИ (robot_id оставляем пустым)
+                    new_inventory_history = self.InventoryHistory(
+                        robot_id=None,  # Оставляем пустым для CSV импорта
+                        zone=zone,
+                        row_number=row_number,
+                        shelf_number=shelf_number,
+                        product_id=product_id,
+                        quantity=quantity,
+                        status=default_status,
+                        scanned_at=scanned_at
+                    )
+                    _s.add(new_inventory_history)
+                    success_count += 1
+                    
+                    print(f"✓ Successfully added inventory record {index+1}: product={product_id}, quantity={quantity}, zone={zone}")
+                    
+                except Exception as e:
+                    error_msg = f"Row {index+1}: {str(e)}"
+                    errors.append(error_msg)
+                    logging.error(f"Error with row {index}: {e}")
+                    print(f"✗ Error with row {index+1}: {e}")
+                    continue
+            
             try:
                 _s.commit()
-            except IntegrityError:
+                result = {
+                    "status": "success", 
+                    "records_processed": success_count,
+                    "total_records": total_records,
+                    "message": f"Successfully imported {success_count} inventory records"
+                }
+                if errors:
+                    result["errors"] = errors
+                print(f"✅ CSV import completed: {success_count}/{total_records} records processed")
+                return result
+                
+            except IntegrityError as e:
                 _s.rollback()
-        #self._commit_record(new_inventory_history)
-
-    # def add_ai_prediction(self, predictions: List[Dict], confidence_score=0.75):
-    #     """
-    #     Добавляет предсказания AI в таблицу ai_predictions.
-    #     predictions: список словарей с полями product_id, days_until_stockout, recommended_order
-    #     confidence_score: уровень достоверности предсказания
-    #     """
-    #     with self.DBSession() as _s:
-    #         print(predictions)
-    #         prediction_date = predictions[-1].get("created_at", None)
-    #         print(prediction_date)
-    #         predictions = predictions[:-1]
-    #         print(predictions)
-    #         for prediction in predictions:
-    #             product_id = prediction.get("product_id", None)
-    #             days_until_stockout = prediction.get("days_until_stockout", None)
-    #             recommended_order = prediction.get("recommended_order", None)
-    #             # Создание новой записи
-    #             new_prediction = self.AIPrediction(
-    #                 product_id=product_id,
-    #                 days_until_stockout=days_until_stockout,
-    #                 recommended_order=recommended_order,
-    #                 confidence_score=confidence_score,
-    #                 prediction_date=prediction_date
-    #             )
-    #             _s.add(new_prediction)
-    #             logging.info(f"Added AI prediction for product {product_id}")
-
-    #         try:
-    #             _s.commit()
-    #             logging.info(f"Successfull")
-
-    #         except IntegrityError:
-    #             _s.rollback()
-    #             logging.error("Failed to add AI predictions: IntegrityError")
-
-    # Внутри класса DataBaseManager
 
     def add_ai_prediction(self, predictions: List[Dict]):
         """
