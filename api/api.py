@@ -24,19 +24,6 @@ from api.schemas import (
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from ai.yandex_gpt_client import yandex_client
 
-<<<<<<< HEAD
-=======
-app = FastAPI(title="Simple FastAPI Service", version="1.0.0")
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # или ["*"] для разработки
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["*"],
-)
-
-security = HTTPBearer()
 
 async def fetch_robots_last_hour_data():
     """
@@ -98,15 +85,6 @@ async def fetch_robots_last_hour_data():
     result = {i: len(active_robots_by_slot[i]) for i in range(6)}
     return result
 
-def admin_required(current_user: UserResponse):
-    if current_user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
-    return current_user
-
->>>>>>> dev/temp
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
