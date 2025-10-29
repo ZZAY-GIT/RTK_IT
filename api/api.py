@@ -268,7 +268,6 @@ async def get_active_robots_by_interval():
     return {"active_robots": data}
 
 @app.post("/api/inventory/import")
-<<<<<<< HEAD
 def import_inventory_csv(file: UploadFile = File(...), current_user: UserResponse = Depends(access_level)):
     """
     Импорт инвентарных данных из CSV файла.
@@ -297,10 +296,6 @@ def import_inventory_csv(file: UploadFile = File(...), current_user: UserRespons
         raise HTTPException(status_code=500, detail="Internal server error during file processing")
     finally:
         file.file.close()
-=======
-def add_csv_file(file_csv: UploadFile = File(...)):
-    pass
->>>>>>> a81dbd3b0913f23d336299dd205669d9e090f01c
     
 
 @app.get("/api/dashboard/current")

@@ -572,7 +572,6 @@ class DataBaseManager:
                 ]
             }
         
-<<<<<<< HEAD
     def process_csv_inventory_import(self, csv_content: str) -> Dict[str, any]:
         """
         Обрабатывает CSV данные для импорта инвентаря
@@ -897,10 +896,6 @@ class DataBaseManager:
             else:
                 logging.info(f"Entry not found")
                 return None
-<<<<<<< HEAD
-    
-=======
-
 
     # def get_products_unique(self, historical_data):
     #     unique_product_id = []
