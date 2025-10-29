@@ -122,8 +122,11 @@ if __name__ == "__main__":
 
     robots = [
         RobotEmulator("RB-02222", "http://localhost:8000"),
-        # RobotEmulator("RB-00224", "http://localhost:8000"),
-        # RobotEmulator("RB-00333", "http://localhost:8000")
+        RobotEmulator("RB-00224", "http://localhost:8000"),
+        RobotEmulator("RB-00333", "http://localhost:8000"),
+        RobotEmulator("RB-00555", "http://localhost:8000"),
+        RobotEmulator("RB-00653", "http://localhost:8000")
+
     ]
 
     for robot in robots:
