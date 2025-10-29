@@ -419,7 +419,7 @@ def create_robot(robot: RobotCreate, current_user: UserResponse = Depends(operat
     )
     if not robot_id:
         raise HTTPException(status_code=400, detail="Failed to create robot")
-    return db.get_robot(robot_id)
+    return db.get_robot_response(robot_id)
 
 @app.get("/api/admin/robot", response_model=List[RobotResponse])
 def get_all_robots(current_user: UserResponse = Depends(access_level)):

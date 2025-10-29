@@ -287,19 +287,25 @@ class DataBaseManager:
             if robot:
                 logging.info(f"Robot with id {robot_id} found")
                 # Возвращаем RobotResponse с правильными полями
-                return RobotResponse(
-                    id=robot.id,
-                    status=robot.status,
-                    battery_level=robot.battery_level,
-                    current_zone=robot.current_zone if robot.current_zone is not None else "",
-                    current_row=robot.current_row if robot.current_row is not None else 0,
-                    current_shelf=robot.current_shelf if robot.current_shelf is not None else 0,
-                    last_update=robot.last_update.isoformat() if robot.last_update else ""
-                )
+                return robot
             else:
                 logging.info(f"Robot with id {robot_id} not found")
                 return None
             
+    def get_robot_response(self, robot_id: str):
+        robot = self.get_robot(robot_id)
+        if robot:
+            return RobotResponse(
+                id=robot.id,
+                status=robot.status,
+                battery_level=robot.battery_level,
+                current_zone=robot.current_zone if robot.current_zone is not None else "",
+                current_row=robot.current_row if robot.current_row is not None else 0,
+                current_shelf=robot.current_shelf if robot.current_shelf is not None else 0,
+                last_update=robot.last_update.isoformat() if robot.last_update else ""
+            )
+        return None
+
     def add_robot(self, id: str, status: str, battery_level: int, current_zone: str = "", current_row: int = 0, current_shelf: int = 0):
         with self.DBSession() as _s:
             # Ищем максимальный существующий ID с префиксом RB-
@@ -426,6 +432,7 @@ class DataBaseManager:
                     robot_status = "inactive"
 
             robot = self.get_robot(robot_id)
+            print(robot)
             if not robot:
                 # Добавляем нового робота
                 robot = self.add_robot(robot_id, robot_status, battery_level)
