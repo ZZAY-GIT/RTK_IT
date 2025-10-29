@@ -7,12 +7,9 @@ from settings import settings
 from datetime import datetime, timedelta
 import bcrypt
 from datetime import datetime
-<<<<<<< HEAD
 from typing import List, Dict
-=======
 import pandas as pd
 import io
->>>>>>> f5d5546 (return id in editing window)
 from api.schemas import (
     UserResponse,
     ProductResponse,
@@ -725,45 +722,6 @@ class DataBaseManager:
                 
             except IntegrityError as e:
                 _s.rollback()
-<<<<<<< HEAD
-        #self._commit_record(new_inventory_history)
-
-    # def add_ai_prediction(self, predictions: List[Dict], confidence_score=0.75):
-    #     """
-    #     Добавляет предсказания AI в таблицу ai_predictions.
-    #     predictions: список словарей с полями product_id, days_until_stockout, recommended_order
-    #     confidence_score: уровень достоверности предсказания
-    #     """
-    #     with self.DBSession() as _s:
-    #         print(predictions)
-    #         prediction_date = predictions[-1].get("created_at", None)
-    #         print(prediction_date)
-    #         predictions = predictions[:-1]
-    #         print(predictions)
-    #         for prediction in predictions:
-    #             product_id = prediction.get("product_id", None)
-    #             days_until_stockout = prediction.get("days_until_stockout", None)
-    #             recommended_order = prediction.get("recommended_order", None)
-    #             # Создание новой записи
-    #             new_prediction = self.AIPrediction(
-    #                 product_id=product_id,
-    #                 days_until_stockout=days_until_stockout,
-    #                 recommended_order=recommended_order,
-    #                 confidence_score=confidence_score,
-    #                 prediction_date=prediction_date
-    #             )
-    #             _s.add(new_prediction)
-    #             logging.info(f"Added AI prediction for product {product_id}")
-
-    #         try:
-    #             _s.commit()
-    #             logging.info(f"Successfull")
-
-    #         except IntegrityError:
-    #             _s.rollback()
-    #             logging.error("Failed to add AI predictions: IntegrityError")
-
-    # Внутри класса DataBaseManager
 
     def add_ai_prediction(self, predictions: List[Dict]):
         """
@@ -830,30 +788,6 @@ class DataBaseManager:
                 logging.info(f"Entry not found")
                 return None
 
-=======
-                error_result = {
-                    "status": "error", 
-                    "records_processed": success_count,
-                    "total_records": total_records,
-                    "detail": f"Database integrity error: {str(e)}",
-                    "errors": errors
-                }
-                print(f"❌ CSV import failed: {error_result}")
-                return error_result
->>>>>>> f5d5546 (return id in editing window)
-        
-    # def get_products_unique(self, historical_data):
-    #     unique_product_id = []
-    #     for product in historical_data['status': "CRITICAL"]:
-    #         product_id = historical_data["product_id"]
-    #         if not(product_id in unique_product_id):
-    #             unique_product_id.append(product_id)
-    #     inventory_data = {}
-    #     with self.DBSession() as _s:
-    #         for product_id in unique_product_id:
-    #             query = _s.query(self.InventoryHistory).filter(self.product_id == product_id).first()
-    #             inventory_data[product_id] = query["quantity"]
-    #         return inventory_data
     
     def get_products_unique(self, historical_data):
         inventory_data = {}
