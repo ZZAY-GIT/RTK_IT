@@ -4,7 +4,7 @@ from sqlalchemy import create_engine, func, desc
 import logging
 from sqlalchemy.exc import IntegrityError
 from settings import settings
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import bcrypt
 from datetime import datetime
 from typing import List, Dict
@@ -95,7 +95,7 @@ class DataBaseManager:
             return None
         record = record.password_hash
         return record
-    
+
     def get_all_users(self):
         with self.DBSession() as _s:
             users = _s.query(self.User).all()
@@ -142,14 +142,14 @@ class DataBaseManager:
                 _s.rollback()
                 logging.error(f"Failed to update user with id {user_id}: IntegrityError")
                 return None
-    
+
     def delete_user(self, user_id: int):
         with self.DBSession() as _s:
             user = _s.query(self.User).filter(self.User.id == user_id).first()
             if not user:
                 logging.info(f"User with id {user_id} not found")
                 return False
-            
+
             _s.delete(user)
             try:
                 _s.commit()
@@ -215,7 +215,7 @@ class DataBaseManager:
             else:
                 logging.info(f"Product with id {product_id} not found")
                 return None
-    
+
     def get_all_products(self):
         with self.DBSession() as _s:
             products = _s.query(self.Product).all()
@@ -259,14 +259,14 @@ class DataBaseManager:
                 _s.rollback()
                 logging.error(f"Failed to update product with id {product_id}: IntegrityError")
                 return None
-    
+
     def delete_product(self, product_id: str):
         with self.DBSession() as _s:
             product = _s.query(self.Product).filter(self.Product.id == product_id).first()
             if not product:
                 logging.info(f"Product with id {product_id} not found")
                 return False
-            
+
             _s.delete(product)
             try:
                 _s.commit()
@@ -637,12 +637,12 @@ class DataBaseManager:
 
         with self.DBSession() as _s:
             saved_predictions_data = []
-            
+
             for prediction in predictions:
                 product_id = prediction.get("product_id")
                 days_until_stockout = prediction.get("days_until_stockout")
                 recommended_order = prediction.get("recommended_order")
-                
+
                 # ГЕНЕРИРУЕМ ДАТУ, если ее нет в запросе
                 prediction_date = prediction.get("created_at") or datetime.now()
 
@@ -654,7 +654,7 @@ class DataBaseManager:
                     prediction_date=prediction_date
                 )
                 _s.add(new_prediction)
-                
+
                 # ВСЕГДА возвращаем дату в формате ISO
                 saved_predictions_data.append({
                     "product_id": product_id,
@@ -691,7 +691,7 @@ class DataBaseManager:
                 logging.info(f"Entry not found")
                 return None
 
-        
+
     # def get_products_unique(self, historical_data):
     #     unique_product_id = []
     #     for product in historical_data['status': "CRITICAL"]:
@@ -704,30 +704,29 @@ class DataBaseManager:
     #             query = _s.query(self.InventoryHistory).filter(self.product_id == product_id).first()
     #             inventory_data[product_id] = query["quantity"]
     #         return inventory_data
-    
+
     def get_products_unique(self, historical_data):
         inventory_data = {}
-        
+
         # Обрабатываем historical_data (предполагается, что это список словарей)
         for item in historical_data:
             # Проверяем статус "CRITICAL"
             if item.get('status') == "CRITICAL":
                 product_id = item.get('product_id')
                 quantity = item.get('quantity')
-                
+
                 # Если продукт еще не добавлен или добавляем с максимальным количеством
                 if product_id and product_id not in inventory_data:
                     inventory_data[product_id] = quantity
                 elif product_id in inventory_data:
                     # Если хотим брать максимальное количество для дубликатов
                     inventory_data[product_id] = max(inventory_data[product_id], quantity)
-        
-        return inventory_data
-        
 
-    # Сводка работы роботов по фильтрам
+        return inventory_data
+
+
+    # # Сводка работы роботов по фильтрам
     def get_filter_inventory_history(self, from_date=None, to_date=None, zone=None, shelf=None, status=None, category=None):
-    
         with self.DBSession() as _s:
             # Базовый запрос для inventory_history с JOIN к products
             query = _s.query(InventoryHistory, Product.name.label('product_name'))\
@@ -799,7 +798,7 @@ class DataBaseManager:
             active_robots_count = _s.query(Robot).filter(Robot.status == 'active').count()
             count_robots = _s.query(Robot).count()
             return (active_robots_count, count_robots)
-        
+
     # Средний заряд батареи роботов, возвращает чило
     def average_battery_charge(self):
         with self.DBSession() as _s:

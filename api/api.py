@@ -1,4 +1,5 @@
-from datetime import datetime, timedelta
+from collections import defaultdict
+from datetime import datetime, timedelta, timezone
 import asyncio
 from contextlib import asynccontextmanager
 from db.DataBaseManager import db
@@ -23,6 +24,89 @@ from api.schemas import (
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from ai.yandex_gpt_client import yandex_client
 
+<<<<<<< HEAD
+=======
+app = FastAPI(title="Simple FastAPI Service", version="1.0.0")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],  # или ["*"] для разработки
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+)
+
+security = HTTPBearer()
+
+async def fetch_robots_last_hour_data():
+    """
+    Получает данные о роботах за последний час,
+    делит время на интервалы и считает количество активных роботов.
+    """
+    # === 1. Время (за последний час) ===
+    now = datetime.now(timezone.utc)
+    hour_ago = now - timedelta(hours=1)  # ← реальный час
+
+    # === 2. Получаем данные из БД ===
+    history = db.get_filter_inventory_history(
+        from_date=hour_ago,
+        to_date=now
+    )
+
+    if not history:
+        return {i: 0 for i in range(6)}
+
+    # === 3. Разделяем час на 6 интервалов по 10 минут ===
+    intervals = []
+    start = hour_ago.replace(microsecond=0, tzinfo=timezone.utc)
+    for i in range(6):
+        s = start + timedelta(minutes=i * 10)
+        e = s + timedelta(minutes=10)
+        if e > now:
+            e = now
+        intervals.append((s, e))
+
+    active_robots_by_slot = defaultdict(set)
+
+    for item in history:
+        raw_time = item.get('scanned_at')
+        robot_id = item.get('robot_id')
+        if not raw_time or not robot_id:
+            continue
+
+        # === Преобразуем время ===
+        try:
+            if isinstance(raw_time, datetime):
+                scanned_at = raw_time
+            elif 'T' in raw_time:
+                scanned_at = datetime.fromisoformat(raw_time.replace('Z', '+00:00'))
+            else:
+                scanned_at = datetime.strptime(raw_time, "%Y-%m-%d %H:%M:%S")
+        except Exception:
+            continue
+
+        # === Делаем scanned_at aware (UTC) ===
+        if scanned_at.tzinfo is None:
+            scanned_at = scanned_at.replace(tzinfo=timezone.utc)
+
+        # === Проверяем интервалы ===
+        for idx, (s, e) in enumerate(intervals):
+            if s <= scanned_at < e:
+                active_robots_by_slot[idx].add(robot_id)
+                break
+
+    result = {i: len(active_robots_by_slot[i]) for i in range(6)}
+    return result
+
+def admin_required(current_user: UserResponse):
+    if current_user.role != "admin":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required"
+        )
+    return current_user
+
+>>>>>>> dev/temp
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -219,7 +303,12 @@ def get_predict():
 @app.post("/api/robots/data")
 def receive_robot_data(data: dict):
     status = db.add_robot_data(data)
-    
+
+
+@app.get("/api/robots/active-by-interval")
+async def get_active_robots_by_interval():
+    data = await fetch_robots_last_hour_data()
+    return {"active_robots": data}
 
 @app.post("/api/inventory/import")
 def add_csv_file(file_csv: UploadFile = File(...)):
