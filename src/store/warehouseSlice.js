@@ -22,8 +22,8 @@ export const uploadCSV = createAsyncThunk(
   'warehouse/uploadCSV',
   async (file) => {
     const formData = new FormData();
-    formData.append('file', file);
-    const response = await axios.post('http://localhost:8000/upload-csv', formData);
+    formData.append('file_csv', file);
+    const response = await axios.post('http://localhost:8000/api/inventory/import', formData);
     return response.data;
   }
 );
@@ -57,9 +57,7 @@ export const addProduct = createAsyncThunk(
   async (product) => {
     const user = localStorage.getItem('user') || sessionStorage.getItem('user');
     
-    const { id, ...productData } = product;
-    
-    const response = await axios.post('http://localhost:8000/api/admin/products', productData, {
+    const response = await axios.post('http://localhost:8000/api/admin/products', product, {
       headers: {
         'X-User-Data': user
       }
