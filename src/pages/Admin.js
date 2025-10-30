@@ -10,6 +10,7 @@ import Header from '../components/Header';
 import { SearchIcon, ChevronDownIcon, PlusIcon, PencilIcon, TrashIcon } from '@heroicons/react/outline';
 import { useTheme } from '../hooks/useTheme';
 import { useAuth } from '../hooks/useAuth';
+import * as XLSX from 'xlsx';
 
 function Admin({ onOpenCSVModal }) {
   const dispatch = useDispatch();
@@ -46,6 +47,12 @@ function Admin({ onOpenCSVModal }) {
     dispatch(fetchRobots());
   }, [dispatch, filters, isOperator]);
 
+  // Очистка выбора при смене вкладки
+  useEffect(() => {
+    setSelectedItems([]);
+    setCurrentPage(1);
+  }, [activeTab]);
+
   // Фильтрация
   const filteredProducts = productsData.filter(
     (product) =>
@@ -67,6 +74,78 @@ function Admin({ onOpenCSVModal }) {
   const paginatedProducts = filteredProducts.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const paginatedUsers = filteredUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
   const paginatedRobots = filteredRobots.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  // Функции для управления выбором элементов
+  const selectAllItems = () => {
+    let currentItems = [];
+    
+    if (activeTab === 'products') {
+      currentItems = paginatedProducts;
+    } else if (activeTab === 'users') {
+      currentItems = paginatedUsers;
+    } else if (activeTab === 'robots') {
+      currentItems = paginatedRobots;
+    }
+    
+    setSelectedItems(currentItems);
+  };
+
+  const clearSelection = () => {
+    setSelectedItems([]);
+  };
+
+  // Функция экспорта в Excel
+  const exportToExcel = () => {
+    if (selectedItems.length === 0) {
+      alert('Выберите элементы для экспорта');
+      return;
+    }
+
+    // Создаем рабочую книгу
+    const workbook = XLSX.utils.book_new();
+    
+    // В зависимости от активной вкладки формируем данные
+    let worksheetData = [];
+    let fileName = '';
+
+    if (activeTab === 'products') {
+      worksheetData = selectedItems.map(item => ({
+        'ID': item.id,
+        'Название': item.name,
+        'Категория': item.category,
+        'Мин. запас': item.min_stock,
+        'Опт. запас': item.optimal_stock
+      }));
+      fileName = 'товары.xlsx';
+    } else if (activeTab === 'users') {
+      worksheetData = selectedItems.map(item => ({
+        'ID': item.id,
+        'Email': item.email,
+        'Имя': item.name,
+        'Роль': item.role === 'operator' ? 'Оператор' : item.role === 'admin' ? 'Админ' : 'Пользователь'
+      }));
+      fileName = 'пользователи.xlsx';
+    } else if (activeTab === 'robots') {
+      worksheetData = selectedItems.map(item => ({
+        'ID робота': item.id,
+        'Статус': item.status === 'active' ? 'Активен' : 'Неактивен',
+        'Батарея': `${item.battery_level || item.battery}%`,
+        'Зона': item.current_zone,
+        'Ряд': item.current_row,
+        'Полка': item.current_shelf
+      }));
+      fileName = 'роботы.xlsx';
+    }
+
+    // Создаем worksheet
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+    
+    // Добавляем worksheet в workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Данные');
+    
+    // Скачиваем файл
+    XLSX.writeFile(workbook, fileName);
+  };
 
   // Функции отмены для модальных окон
   const handleCancelProduct = () => {
@@ -250,6 +329,12 @@ function Admin({ onOpenCSVModal }) {
     }
   };
 
+  // Обработчик смены вкладки
+  const handleTabChange = (tab) => {
+    setActiveTab(tab);
+    // Выбор очистится автоматически благодаря useEffect
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <Header onOpenCSVModal={onOpenCSVModal} />
@@ -263,7 +348,7 @@ function Admin({ onOpenCSVModal }) {
                   ? 'bg-blue-600 dark:bg-blue-700 text-white'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 bg-white'
               }`}
-              onClick={() => setActiveTab('products')}
+              onClick={() => handleTabChange('products')}
             >
               Товары
             </button>
@@ -275,7 +360,7 @@ function Admin({ onOpenCSVModal }) {
                     ? 'bg-blue-600 dark:bg-blue-700 text-white '
                     : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 bg-white'
                 }`}
-                onClick={() => setActiveTab('users')}
+                onClick={() => handleTabChange('users')}
               >
                 Пользователи
               </button>
@@ -286,11 +371,37 @@ function Admin({ onOpenCSVModal }) {
                   ? 'bg-blue-600 dark:bg-blue-700 text-white'
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-100 bg-white'
               }`}
-              onClick={() => setActiveTab('robots')}
+              onClick={() => handleTabChange('robots')}
             >
               Роботы
             </button>
           </div>
+        </div>
+
+        {/* Панель управления выбором и экспортом */}
+        <div className="flex space-x-4 mb-6">
+          <button 
+            onClick={selectAllItems}
+            className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 flex items-center"
+          >
+            Выбрать все {
+              activeTab === 'products' ? paginatedProducts.length :
+              activeTab === 'users' ? paginatedUsers.length :
+              activeTab === 'robots' ? paginatedRobots.length : 0
+            }
+          </button>
+          <button 
+            onClick={clearSelection}
+            className="bg-gray-600 dark:bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 flex items-center"
+          >
+            Сбросить выбор
+          </button>
+          <button 
+            onClick={exportToExcel}
+            className="bg-green-600 dark:bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-700 dark:hover:bg-green-800 flex items-center"
+          >
+            Экспорт в Excel ({selectedItems.length})
+          </button>
         </div>
 
         {/* Управление товарами */}
@@ -330,6 +441,18 @@ function Admin({ onOpenCSVModal }) {
               <thead>
                 <tr className="bg-gray-100 dark:bg-gray-700">
                   <th className="p-2 text-left">
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.length === paginatedProducts.length && paginatedProducts.length > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          selectAllItems();
+                        } else {
+                          clearSelection();
+                        }
+                      }}
+                      className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
+                    />
                   </th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">ID</th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">Название</th>
@@ -455,6 +578,18 @@ function Admin({ onOpenCSVModal }) {
               <thead>
                 <tr className="bg-gray-100 dark:bg-gray-700">
                   <th className="p-2 text-left">
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.length === paginatedUsers.length && paginatedUsers.length > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          selectAllItems();
+                        } else {
+                          clearSelection();
+                        }
+                      }}
+                      className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
+                    />
                   </th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">ID</th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">Email</th>
@@ -580,6 +715,18 @@ function Admin({ onOpenCSVModal }) {
               <thead>
                 <tr className="bg-gray-100 dark:bg-gray-700">
                   <th className="p-2 text-left">
+                    <input
+                      type="checkbox"
+                      checked={selectedItems.length === paginatedRobots.length && paginatedRobots.length > 0}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          selectAllItems();
+                        } else {
+                          clearSelection();
+                        }
+                      }}
+                      className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
+                    />
                   </th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">ID робота</th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">Статус</th>
@@ -672,16 +819,6 @@ function Admin({ onOpenCSVModal }) {
           </div>
         )}
 
-        {/* Панель действий */}
-        <div className="flex space-x-4 mb-6">
-          <button className="bg-green-600 dark:bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-700 dark:hover:bg-green-800">
-            Экспорт в Excel
-          </button>
-          <button className="bg-green-600 dark:bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-700 dark:hover:bg-green-800">
-            Экспорт в PDF
-          </button>
-        </div>
-
         {/* Модальное окно для товаров */}
         {isProductModalOpen && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -700,8 +837,8 @@ function Admin({ onOpenCSVModal }) {
                         readOnly={!!editingProduct}
                         className={`w-full p-2 border rounded-lg border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100 ${
                           editingProduct 
-                            ? 'bg-gray-100 dark:bg-gray-600 cursor-not-allowed'  // ← СЕРЫЙ ФОН ПРИ РЕДАКТИРОВАНИИ
-                            : 'bg-white dark:bg-gray-700'                        // ← ОБЫЧНЫЙ ФОН ПРИ СОЗДАНИИ
+                            ? 'bg-gray-100 dark:bg-gray-600 cursor-not-allowed'
+                            : 'bg-white dark:bg-gray-700'
                         }`}
                       />
                     </div>
@@ -846,7 +983,6 @@ function Admin({ onOpenCSVModal }) {
               </h2>
               <form onSubmit={handleAddOrUpdateRobot}>
                 <div className="space-y-4">
-                  {/* Поле ID - всегда видимое, но заблокированное при редактировании */}
                   <div>
                     <label className="block text-sm text-gray-600 dark:text-gray-300">ID робота</label>
                     <input
