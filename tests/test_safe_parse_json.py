@@ -18,28 +18,28 @@ class TestSafeParseJson:
 
     def test_valid_json(self, setup_mocked_time):
         """Тест успешного парсинга валидного JSON-списка."""
-        json_str = '[{"key": "value"}]'
-        expected = [{"key": "value"}, {"created_at": datetime(2025, 10, 26, 19, 30, 0)}]
+        json_str = '[{"product_id": "value"}]'
+        expected = [{"product_id": "value", "created_at": datetime(2025, 10, 26, 19, 30, 0)}]
         result = yandex_client.safe_parse_json(json_str)
         assert result == expected
 
     def test_with_markdown(self, setup_mocked_time):
         """Тест парсинга JSON-списка в markdown-обертке."""
-        json_str = '```json\n[{"key": "value"}]\n```'
-        expected = [{"key": "value"}, {"created_at": datetime(2025, 10, 26, 19, 30, 0)}]
+        json_str = '```json\n[{"product_id": "value"}]\n```'
+        expected = [{"product_id": "value", "created_at": datetime(2025, 10, 26, 19, 30, 0)}]
         result = yandex_client.safe_parse_json(json_str)
         assert result == expected
 
     def test_with_empty_markdown(self, setup_mocked_time):
         """Тест парсинга JSON-списка в markdown с пустыми строками."""
-        json_str = '```\n[{"key": "value"}]\n\n```'
-        expected = [{"key": "value"}, {"created_at": datetime(2025, 10, 26, 19, 30, 0)}]
+        json_str = '```\n[{"product_id": "value"}]\n\n```'
+        expected = [{"product_id": "value", "created_at": datetime(2025, 10, 26, 19, 30, 0)}]
         result = yandex_client.safe_parse_json(json_str)
         assert result == expected
 
     def test_invalid_json(self):
         """Тест обработки невалидного JSON."""
-        json_str = '[{"key": "value"'  # Неполный JSON
+        json_str = '[{"product_id": "value"'  # Неполный JSON
         result = yandex_client.safe_parse_json(json_str)
         assert result is None
 
@@ -63,16 +63,23 @@ class TestSafeParseJson:
 
     def test_nested_json(self, setup_mocked_time):
         """Тест парсинга сложного (вложенного) JSON-списка."""
-        json_str = '```json\n[{"key": {"nested": 42}}]\n```'
-        expected = [{"key": {"nested": 42}}, {"created_at": datetime(2025, 10, 26, 19, 30, 0)}]
+        json_str = '```json\n[{"product_id": "value", "key": {"nested": 42}}]\n```'
+        expected = [{"product_id": "value", "key": {"nested": 42}, "created_at": datetime(2025, 10, 26, 19, 30, 0)}]
         result = yandex_client.safe_parse_json(json_str)
         assert result == expected
 
     def test_non_list_json(self):
         """Тест обработки JSON, который не является списком."""
-        json_str = '{"key": "value"}'  # JSON-объект, а не список
+        json_str = '{"product_id": "value"}'  # JSON-объект, а не список
         result = yandex_client.safe_parse_json(json_str)
         assert result is None
+        
+    def test_json_without_product_id(self, setup_mocked_time):
+        """Тест парсинга JSON-списка без поля product_id."""
+        json_str = '[{"key": "value"}]'
+        expected = [{"key": "value"}]  # created_at не добавляется, так как нет product_id
+        result = yandex_client.safe_parse_json(json_str)
+        assert result == expected
 
 if __name__ == "__main__":
     unittest.main()
