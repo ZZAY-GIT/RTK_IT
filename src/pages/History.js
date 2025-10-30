@@ -1,16 +1,18 @@
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Chart } from 'chart.js'; // ← Только чистый Chart.js
+import { Chart } from 'chart.js';
 import { fetchHistoryData, setFilters } from '../store/warehouseSlice';
 import Header from '../components/Header';
 import { SearchIcon } from '@heroicons/react/outline';
 import { useTheme } from '../hooks/useTheme';
+import * as XLSX from 'xlsx';
 
 function History({ onOpenCSVModal }) {
   const dispatch = useDispatch();
   const { historyData: reduxHistoryData, filters } = useSelector((state) => state.warehouse);
   const { theme } = useTheme();
-  const [selectedItems, setSelectedItems] = useState([]);
+  const [tableSelectedItems, setTableSelectedItems] = useState([]);
+  const [chartSelectedItems, setChartSelectedItems] = useState([]);
   const [pageSize, setPageSize] = useState(20);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(false);
@@ -18,20 +20,23 @@ function History({ onOpenCSVModal }) {
   const [productSearch, setProductSearch] = useState('');
   const [showProductSelector, setShowProductSelector] = useState(false);
 
-  // Преобразуем данные из API
+  // Преобразуем данные из API - ВАЖНО: приводим id к строке
   const transformApiData = (apiData) => {
     if (!apiData || !apiData.items) return [];
+    
     return apiData.items.map(item => ({
-      id: item.id,
+      id: Number(item.id),
       date: item.scanned_at ? new Date(item.scanned_at).toLocaleDateString('ru-RU') : 'N/A',
       productId: item.product_id || 'N/A',
       productName: item.product_name || `Товар ${item.product_id || 'N/A'}`,
       actualQuantity: item.quantity || 0,
       robotId: item.robot_id || 'N/A',
       zone: item.zone || 'N/A',
+      shelfNumber: item.shelf_number || 'N/A',
       status: item.status ? item.status.toLowerCase() : 'unknown',
       expectedQuantity: item.recommended_order || 0,
       discrepancy: item.discrepancy || 0,
+      predictionConfidence: item.prediction_confidence || null,
       scanned_at: item.scanned_at,
     }));
   };
@@ -51,8 +56,8 @@ function History({ onOpenCSVModal }) {
   );
 
   const testHistoryData = [
-    { date: '2024-01-25', productId: 'P1', productName: 'Товар 1', actualQuantity: 100, robotId: 'R1', zone: 'A1', status: 'ok', expectedQuantity: 100, discrepancy: 0 },
-    { date: '2024-01-24', productId: 'P1', productName: 'Товар 1', actualQuantity: 90, robotId: 'R1', zone: 'A1', status: 'ok', expectedQuantity: 100, discrepancy: -10 },
+    { id: 1, date: '2024-01-25', productId: 'P1', productName: 'Товар 1', actualQuantity: 100, robotId: 'R1', zone: 'A1', status: 'ok', expectedQuantity: 100, discrepancy: 0 },
+    { id: 2, date: '2024-01-24', productId: 'P1', productName: 'Товар 1', actualQuantity: 90, robotId: 'R1', zone: 'A1', status: 'ok', expectedQuantity: 100, discrepancy: -10 },
   ];
 
   const finalHistoryData = historyItems.length > 0 ? historyItems : testHistoryData;
@@ -129,10 +134,108 @@ function History({ onOpenCSVModal }) {
     }
   }, [filters.startDate, filters.endDate, filters.zones, filters.status, filters.search]);
 
+  // Получаем элементы текущей страницы таблицы
+  const getCurrentTableItems = () => {
+    return finalHistoryData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  };
+
+  // Функции для управления выбором элементов ТАБЛИЦЫ (исправленные)
+  const selectAllTableItems = () => {
+    const currentItems = getCurrentTableItems();
+    setTableSelectedItems(currentItems);
+  };
+
+  const clearTableSelection = () => {
+    setTableSelectedItems([]);
+  };
+
+  // Проверка выбраны ли все элементы таблицы на текущей странице (ИСПРАВЛЕННАЯ)
+  const isAllTableItemsSelected = () => {
+    const currentItems = getCurrentTableItems();
+    if (currentItems.length === 0) return false;
+    
+    // Проверяем, что ВСЕ элементы текущей страницы находятся в выбранных
+    return currentItems.every(currentItem => 
+      tableSelectedItems.some(selectedItem => selectedItem.id === currentItem.id)
+    );
+  };
+
+  // Проверка выбран ли конкретный элемент
+  const isItemSelected = (item) => {
+    return tableSelectedItems.some(selectedItem => selectedItem.id === item.id);
+  };
+
+  // Обработчик выбора/снятия выбора всех элементов
+  const handleSelectAllTableItems = (e) => {
+    if (e.target.checked) {
+      selectAllTableItems();
+    } else {
+      clearTableSelection();
+    }
+  };
+
+  // Обработчик выбора отдельного элемента (ИСПРАВЛЕННЫЙ)
+  const handleSelectTableItem = (item, e) => {
+    if (e.target.checked) {
+      // Добавляем элемент, если его еще нет в выбранных
+      if (!isItemSelected(item)) {
+        setTableSelectedItems([...tableSelectedItems, item]);
+      }
+    } else {
+      // Удаляем элемент из выбранных
+      setTableSelectedItems(tableSelectedItems.filter(selectedItem => selectedItem.id !== item.id));
+    }
+  };
+
+  // Функции для управления выбором элементов ГРАФИКА
+  const clearChartSelection = () => {
+    setChartSelectedItems([]);
+  };
+
+  // Функция экспорта в Excel (только для таблицы)
+  const exportToExcel = () => {
+    if (tableSelectedItems.length === 0) {
+      alert('Выберите элементы из таблицы для экспорта');
+      return;
+    }
+
+    // Создаем рабочую книгу
+    const workbook = XLSX.utils.book_new();
+    
+    // Формируем данные для экспорта
+    const worksheetData = tableSelectedItems.map(item => ({
+      'Дата': item.date,
+      'ID робота': item.robotId,
+      'Зона': item.zone,
+      'Полка': item.shelfNumber,
+      'Артикул': item.productId,
+      'Название': item.productName,
+      'Ожидаемое количество': item.expectedQuantity,
+      'Фактическое количество': item.actualQuantity,
+      'Расхождение': item.discrepancy,
+      'Статус': item.status === 'ok' ? 'ОК' : item.status === 'low' ? 'Низкий остаток' : 'Критично',
+      'Уверенность предсказания': item.predictionConfidence || 'N/A'
+    }));
+
+    // Создаем worksheet
+    const worksheet = XLSX.utils.json_to_sheet(worksheetData);
+    
+    // Добавляем worksheet в workbook
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'История инвентаризации');
+    
+    // Скачиваем файл
+    XLSX.writeFile(workbook, 'история_инвентаризации.xlsx');
+  };
+
+  // Функция для получения количества элементов текущей страницы таблицы
+  const getCurrentTableItemsCount = () => {
+    return getCurrentTableItems().length;
+  };
+
   // === ГРАФИК ТРЕНДА ОСТАТКОВ НА ЧИСТОМ Chart.js ===
   useEffect(() => {
     const canvas = document.getElementById('trendChart');
-    if (!canvas || selectedItems.length === 0) return;
+    if (!canvas || chartSelectedItems.length === 0) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -146,10 +249,10 @@ function History({ onOpenCSVModal }) {
     const gridColor = isDark ? '#4b5563' : '#e5e7eb';
 
     const labels = [...new Set(finalHistoryData
-      .filter(item => selectedItems.some(s => s.productId === item.productId))
+      .filter(item => chartSelectedItems.some(s => s.productId === item.productId))
       .map(item => item.date))].sort();
 
-    const datasets = selectedItems.map((item, index) => {
+    const datasets = chartSelectedItems.map((item, index) => {
       const itemData = finalHistoryData
         .filter(d => d.productId === item.productId)
         .sort((a, b) => new Date(a.date) - new Date(b.date));
@@ -220,15 +323,14 @@ function History({ onOpenCSVModal }) {
         window.trendChartInstance = null;
       }
     };
-  }, [selectedItems, finalHistoryData, theme]);
+  }, [chartSelectedItems, finalHistoryData, theme]);
 
   const availableZones = [...new Set(finalHistoryData.map(item => item.zone))].filter(z => z && z !== 'N/A');
   const totalPages = Math.ceil(finalTotalItems / pageSize);
   const startItem = (currentPage - 1) * pageSize + 1;
   const endItem = Math.min(currentPage * pageSize, finalTotalItems);
   const hasActiveFilters = filters.startDate || filters.endDate || filters.zones?.length > 0 || filters.status?.length > 0 || filters.search;
-  const hasChartData = selectedItems.length > 0 && finalHistoryData.some(item => selectedItems.some(s => s.productId === item.productId));
-
+  const hasChartData = chartSelectedItems.length > 0 && finalHistoryData.some(item => chartSelectedItems.some(s => s.productId === item.productId));
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <Header onOpenCSVModal={onOpenCSVModal} />
@@ -322,7 +424,12 @@ function History({ onOpenCSVModal }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                   {filteredProducts.slice(0, 100).map(p => (
                     <label key={p.productId} className="flex items-center space-x-2 bg-white dark:bg-gray-600 p-3 rounded-lg border border-gray-200 dark:border-gray-500">
-                      <input type="checkbox" checked={selectedItems.some(i => i.productId === p.productId)} onChange={e => e.target.checked ? setSelectedItems([...selectedItems, p]) : setSelectedItems(selectedItems.filter(i => i.productId !== p.productId))} className="text-blue-600 dark:text-blue-400" />
+                      <input 
+                        type="checkbox" 
+                        checked={chartSelectedItems.some(i => i.productId === p.productId)} 
+                        onChange={e => e.target.checked ? setChartSelectedItems([...chartSelectedItems, p]) : setChartSelectedItems(chartSelectedItems.filter(i => i.productId !== p.productId))} 
+                        className="text-blue-600 dark:text-blue-400" 
+                      />
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{p.productName}</div>
                         <div className="text-xs text-gray-500 dark:text-gray-400">{p.productId}</div>
@@ -331,18 +438,18 @@ function History({ onOpenCSVModal }) {
                   ))}
                 </div>
               </div>
-              {selectedItems.length > 0 && (
+              {chartSelectedItems.length > 0 && (
                 <div className="mt-4">
-                  <h4 className="text-sm font-medium text-gray-800 dark:text-gray-100 mb-2">Выбрано: {selectedItems.length}</h4>
+                  <h4 className="text-sm font-medium text-gray-800 dark:text-gray-100 mb-2">Выбрано для графика: {chartSelectedItems.length}</h4>
                   <div className="flex flex-wrap gap-2">
-                    {selectedItems.map(i => (
+                    {chartSelectedItems.map(i => (
                       <span key={i.productId} className="inline-flex items-center bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-3 py-1 rounded-full text-sm">
                         {i.productName}
-                        <button onClick={() => setSelectedItems(selectedItems.filter(x => x.productId !== i.productId))} className="ml-2">×</button>
+                        <button onClick={() => setChartSelectedItems(chartSelectedItems.filter(x => x.productId !== i.productId))} className="ml-2">×</button>
                       </span>
                     ))}
                   </div>
-                  <button onClick={() => setSelectedItems([])} className="mt-2 text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">Очистить все</button>
+                  <button onClick={clearChartSelection} className="mt-2 text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300">Очистить все</button>
                 </div>
               )}
             </div>
@@ -353,10 +460,32 @@ function History({ onOpenCSVModal }) {
               <canvas id="trendChart" style={{ width: '100%', height: '100%' }} />
             ) : (
               <div className="h-full flex items-center justify-center bg-gray-50 dark:bg-gray-700 rounded-lg">
-                <p className="text-gray-500 dark:text-gray-400">{selectedItems.length === 0 ? 'Выберите товары' : 'Нет данных'}</p>
+                <p className="text-gray-500 dark:text-gray-400">{chartSelectedItems.length === 0 ? 'Выберите товары для графика' : 'Нет данных'}</p>
               </div>
             )}
           </div>
+        </div>
+
+        {/* === ПАНЕЛЬ УПРАВЛЕНИЯ ВЫБОРОМ И ЭКСПОРТОМ ТАБЛИЦЫ === */}
+        <div className="flex space-x-4 mb-6">
+          <button 
+            onClick={selectAllTableItems}
+            className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 flex items-center"
+          >
+            Выбрать все в таблице ({getCurrentTableItemsCount()})
+          </button>
+          <button 
+            onClick={clearTableSelection}
+            className="bg-gray-600 dark:bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 flex items-center"
+          >
+            Сбросить выбор таблицы
+          </button>
+          <button 
+            onClick={exportToExcel}
+            className="bg-green-600 dark:bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-700 dark:hover:bg-green-800 flex items-center"
+          >
+            Экспорт таблицы в Excel ({tableSelectedItems.length})
+          </button>
         </div>
 
         {/* === ТАБЛИЦА === */}
@@ -369,9 +498,18 @@ function History({ onOpenCSVModal }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="bg-gray-100 dark:bg-gray-700">
+                  <th className="p-2 text-left">
+                    <input
+                      type="checkbox"
+                      checked={isAllTableItemsSelected()}
+                      onChange={handleSelectAllTableItems}
+                      className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
+                    />
+                  </th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">Дата</th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">ID робота</th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">Зона</th>
+                  <th className="p-2 text-left text-gray-800 dark:text-gray-100">Полка</th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">Артикул</th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">Название</th>
                   <th className="p-2 text-left text-gray-800 dark:text-gray-100">Ожидаемое</th>
@@ -381,16 +519,29 @@ function History({ onOpenCSVModal }) {
                 </tr>
               </thead>
               <tbody>
-                {finalHistoryData.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((d, i) => (
-                  <tr key={i} className="border-t dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">
+                {getCurrentTableItems().map((d, i) => (
+                  <tr key={d.id} className="border-t dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="p-2">
+                      <input
+                        type="checkbox"
+                        checked={isItemSelected(d)}
+                        onChange={(e) => handleSelectTableItem(d, e)}
+                        className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
+                      />
+                    </td>
                     <td className="p-2 text-gray-800 dark:text-gray-100">{d.date}</td>
                     <td className="p-2 text-gray-800 dark:text-gray-100">{d.robotId}</td>
                     <td className="p-2 text-gray-800 dark:text-gray-100">{d.zone}</td>
+                    <td className="p-2 text-gray-800 dark:text-gray-100">{d.shelfNumber}</td>
                     <td className="p-2 text-gray-800 dark:text-gray-100">{d.productId}</td>
                     <td className="p-2 text-gray-800 dark:text-gray-100">{d.productName}</td>
                     <td className="p-2 text-gray-800 dark:text-gray-100">{d.expectedQuantity}</td>
                     <td className="p-2 text-gray-800 dark:text-gray-100">{d.actualQuantity}</td>
-                    <td className="p-2 text-gray-800 dark:text-gray-100"><span className={d.discrepancy < 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}>{d.discrepancy > 0 ? '+' : ''}{d.discrepancy}</span></td>
+                    <td className="p-2 text-gray-800 dark:text-gray-100">
+                      <span className={d.discrepancy < 0 ? 'text-red-600 dark:text-red-400' : 'text-green-600 dark:text-green-400'}>
+                        {d.discrepancy > 0 ? '+' : ''}{d.discrepancy}
+                      </span>
+                    </td>
                     <td className="p-2">
                       <span className={`px-2 py-1 rounded-full text-xs ${d.status === 'ok' ? 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300' : d.status === 'low' ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300' : 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300'}`}>
                         {d.status === 'ok' ? 'ОК' : d.status === 'low' ? 'Низкий остаток' : 'Критично'}
