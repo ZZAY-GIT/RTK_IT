@@ -15,14 +15,17 @@ function Header({ onOpenCSVModal }) {
     navigate('/login');
   };
 
-  // Функция для проверки активной ссылки
-  const isActiveLink = (path) => {
-    return location.pathname === path;
-  };
+  const isActiveLink = (path) => location.pathname === path;
+
+  // Кнопка CSV: всегда передаётся onOpenCSVModal, но:
+  // - на /dashboard — visibility: hidden + pointer-events: none
+  // - на других страницах — visible + clickable
+  const isDashboard = location.pathname === '/dashboard';
+  const showCSVButton = !!onOpenCSVModal;
 
   return (
     <header className="bg-white dark:bg-gray-800 shadow-md">
-      {/* Верхняя панель: логотип + имя */}
+      {/* Верхняя панель */}
       <div className="px-6 py-3 flex items-center justify-between border-b dark:border-gray-700">
         <div className="flex items-center space-x-4">
           <Link to="/dashboard">
@@ -43,12 +46,10 @@ function Header({ onOpenCSVModal }) {
               </div>
             </div>
           ) : (
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Гость
-            </div>
+            <div className="text-sm text-gray-500 dark:text-gray-400">Гость</div>
           )}
 
-          {/* Кнопка переключения темы */}
+          {/* Переключение темы */}
           <button
             onClick={toggleTheme}
             className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
@@ -61,7 +62,7 @@ function Header({ onOpenCSVModal }) {
             )}
           </button>
 
-          {/* Кнопка выхода */}
+          {/* Выход */}
           <button
             onClick={handleLogout}
             className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-all text-sm"
@@ -71,7 +72,7 @@ function Header({ onOpenCSVModal }) {
         </div>
       </div>
 
-      {/* Навигация + CSV */}
+      {/* Навигация */}
       <nav className="px-6 py-3 bg-gray-50 dark:bg-gray-700 flex justify-between items-center">
         <div className="flex space-x-8">
           <Link
@@ -108,17 +109,21 @@ function Header({ onOpenCSVModal }) {
           )}
         </div>
 
-        <div className="flex items-center">
+        {/* КНОПКА CSV — ВСЕГДА ЕСТЬ, НО НА DASHBOARD: НЕВИДИМА + НЕКЛИКАБЕЛЬНА */}
+        {showCSVButton && (
           <button
-            onClick={onOpenCSVModal}
-            className={`bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-all text-sm ${
-              location.pathname === '/dashboard' ? 'invisible' : 'visible'
+            onClick={isDashboard ? undefined : onOpenCSVModal}
+            className={`bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all text-sm ${
+              isDashboard
+                ? 'invisible pointer-events-none'  // ← НЕВИДИМА + НЕКЛИКАБЕЛЬНА
+                : 'hover:bg-blue-700 dark:hover:bg-blue-800'
             }`}
-            disabled={location.pathname === '/dashboard'}
+            disabled={isDashboard}
+            aria-hidden={isDashboard}
           >
             Загрузить CSV
           </button>
-        </div>
+        )}
       </nav>
     </header>
   );
