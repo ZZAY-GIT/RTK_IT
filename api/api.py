@@ -23,7 +23,10 @@ from api.schemas import (
 
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from ai.yandex_gpt_client import yandex_client
-
+from redis.asyncio import Redis
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+from fastapi_cache.decorator import cache
 
 async def fetch_robots_last_hour_data():
     """
@@ -91,6 +94,15 @@ async def lifespan(app: FastAPI):
     # Запуск при старте приложения
     logging.info("Starting application...")
     
+    redis = Redis(
+        host=settings.REDIS.host,
+        port=settings.REDIS.port,
+        db=settings.REDIS.db.cache,
+    )
+    FastAPICache.init(
+        RedisBackend(redis), 
+        prefix=settings.CACHE.prefix,
+    )
     # Запускаем фоновую задачу для broadcast обновлений
     broadcast_task = asyncio.create_task(
         ws_manager.broadcast_dashboard_updates(
@@ -207,6 +219,7 @@ def predict(request: PredictRequest):
     return PredictResponse(predictions=saved_predictions, confidence=0.75)
 
 @app.get("/api/ai/predict", response_model=PredictResponse)
+@cache(expire=7200)
 def get_predict():
     inventory_data, historical_data = db.get_data_for_predict()
     predictions_from_ai = yandex_client.get_prediction(inventory_data, historical_data)

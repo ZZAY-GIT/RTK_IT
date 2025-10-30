@@ -6,7 +6,7 @@ authors = [
     {name = "Your Name",email = "you@example.com"}
 ]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.12,<4.0"
 dependencies = [
     "sqlalchemy (>=2.0.44,<3.0.0)",
     "pydantic-settings (>=2.11.0,<3.0.0)",
@@ -24,6 +24,8 @@ dependencies = [
     "websockets (>=15.0.1,<16.0.0)",
     "pytest (>=8.4.2,<9.0.0)",
     "pytest-cov (>=7.0.0,<8.0.0)",
+    "redis (>=7.0.1,<8.0.0)",
+    "fastapi-cache2 (>=0.2.2,<0.3.0)",
 ]
 
 
