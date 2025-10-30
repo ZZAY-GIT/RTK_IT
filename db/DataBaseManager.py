@@ -897,14 +897,14 @@ class DataBaseManager:
         
         if not historical_data:
             # Если нет критических остатков, предсказывать нечего
-            logging.info("No critical inventory data found for prediction.")
+            print("No critical inventory data found for prediction.")
             return PredictResponse(predictions=[], confidence=0.0)
 
         inventory_data = db.get_products_unique(historical_data)
         
         if not inventory_data:
             # Если уникальных продуктов нет, тоже нечего предсказывать
-            logging.info("No unique products found in critical inventory.")
+            print("No unique products found in critical inventory.")
             return PredictResponse(predictions=[], confidence=0.0)
         return inventory_data, historical_data
     
