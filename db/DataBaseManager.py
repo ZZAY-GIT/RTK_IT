@@ -1003,6 +1003,7 @@ class DataBaseManager:
             # Формируем результат
             for inv_his, product_name in records:
                 result_json = {
+                    'id': inv_his.id,
                     'robot_id': inv_his.robot_id,
                     'product_id': inv_his.product_id,
                     'product_name': product_name,  # Добавлено имя продукта
