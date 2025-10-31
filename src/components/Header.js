@@ -2,7 +2,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
 import { SunIcon, MoonIcon } from '@heroicons/react/outline';
-import logo from '../logo.png';
+import logo from '../assets/logo.png';
 
 function Header({ onOpenCSVModal }) {
   const { user, logout } = useAuth();

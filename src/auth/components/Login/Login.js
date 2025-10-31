@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
-import logo from '../logo.png';
-import { useAuth } from '../hooks/useAuth'; // ← Критично!
-import { useTheme } from '../hooks/useTheme';
+import logo from '../../../assets/logo.png';
+import { useAuth } from '../../../hooks/useAuth'; // ← Критично!
+import { useTheme } from '../../../hooks/useTheme';
 import { MailIcon, LockClosedIcon, SunIcon, MoonIcon } from '@heroicons/react/outline';
 
 function Login() {

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { useDispatch } from 'react-redux';
-import { setWebsocketStatus, updateDashboardFromWebSocket } from '../store/warehouseSlice';
+import { setWebsocketStatus, updateDashboardFromWebSocket } from '../../../store/warehouseSlice';
 
 const WS_URL = 'ws://localhost:8000/api/ws/dashboard'; // Измени на свой URL если нужно
 

@@ -1,23 +1,21 @@
-import { useState } from 'react';
+import { useState, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { store } from './store';
-import { useAuth } from './hooks/useAuth';
 import { ThemeProvider } from './hooks/useTheme';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import History from './pages/History';
-import Admin from './pages/Admin';
-import CSVUploadModal from './components/CSVUploadModal';
 
-function ProtectedRoute({ children, adminOnly = false }) {
-  const { user } = useAuth();
-  if (!user) return <Navigate to="/login" />;
-  if (adminOnly && !['operator', 'admin'].includes(user.role)) {
-    return <Navigate to="/dashboard" />;
-  }
-  return children;
-}
+// === Компоненты ===
+import ProtectedRoute from './components/ProtectedRoute';  // Убрали ./
+import CSVUploadModal from './components/CSVUploadModal';
+import Loader from './components/Loader';
+
+// === Фичи (lazy loading) ===
+const Login = lazy(() => import('./auth/components/Login'));
+const ForgotPassword = lazy(() => import('./auth/components/ForgotPassword'));
+const Dashboard = lazy(() => import('./features/dashboard/components/Dashboard'));
+const History = lazy(() => import('./features/history/components/History'));
+const Admin = lazy(() => import('./features/admin/components/Admin'));
+const NotFound = lazy(() => import('./components/NotFound'));// Создайте или удалите
 
 function App() {
   const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
@@ -26,38 +24,45 @@ function App() {
     <ThemeProvider>
       <Provider store={store}>
         <BrowserRouter>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route
-              path="/dashboard"
-              element={
-                <ProtectedRoute>
-                  <Dashboard onOpenCSVModal={() => setIsCSVModalOpen(true)} />
-                </ProtectedRoute>
-              }
+          <Suspense fallback={<Loader />}>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/forgot-password" element={<ForgotPassword />} />
+
+              <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard onOpenCSVModal={() => setIsCSVModalOpen(true)} />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/history"
+                element={
+                  <ProtectedRoute>
+                    <History onOpenCSVModal={() => setIsCSVModalOpen(true)} />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/admin"
+                element={
+                  <ProtectedRoute adminOnly>
+                    <Admin onOpenCSVModal={() => setIsCSVModalOpen(true)} />
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+
+            <CSVUploadModal
+              isOpen={isCSVModalOpen}
+              onClose={() => setIsCSVModalOpen(false)}
             />
-            <Route
-              path="/history"
-              element={
-                <ProtectedRoute>
-                  <History onOpenCSVModal={() => setIsCSVModalOpen(true)} />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/admin"
-              element={
-                <ProtectedRoute adminOnly>
-                  <Admin onOpenCSVModal={() => setIsCSVModalOpen(true)} />
-                </ProtectedRoute>
-              }
-            />
-            <Route path="/" element={<Navigate to="/dashboard" />} />
-          </Routes>
-          <CSVUploadModal
-            isOpen={isCSVModalOpen}
-            onClose={() => setIsCSVModalOpen(false)}
-          />
+          </Suspense>
         </BrowserRouter>
       </Provider>
     </ThemeProvider>
