@@ -15,17 +15,23 @@ import AIPredictions from './AIPredictions';
 
 export default function Dashboard({ onOpenCSVModal }) {
   const dispatch = useDispatch();
-  const { robots, zones, recentScans, aiPredictions, websocketStatus, loading } = useSelector((state) => state.warehouse);
+  const { robots, zones, recentScans, aiPredictions, websocketStatus, loading } = useSelector(
+    (state) => state.warehouse
+  );
   const { theme } = useTheme();
+
+  // Состояние графика — получаем из API
   const [activityHistory, setActivityHistory] = useState([]);
 
   useWarehouseWebSocket();
 
+  // Инициализация данных при монтировании
   useEffect(() => {
     dispatch(fetchDashboardData());
     dispatch(fetchAIPredictions());
   }, [dispatch]);
 
+  // Формат даты (для тултипа графика)
   const formatDateTime = (date) => {
     return date.toLocaleString('ru-RU', {
       day: '2-digit',
@@ -33,49 +39,43 @@ export default function Dashboard({ onOpenCSVModal }) {
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
-      second: '2-digit'
+      second: '2-digit',
     });
   };
 
+  // === Загрузка истории активности ===
   useEffect(() => {
-    const activeCount = robots.filter(r => r.status === 'active').length;
-    const now = new Date();
+    let isMounted = true;
+    let intervalId = null;
 
-    setActivityHistory(prev => {
-      const newHistory = [...prev, {
-        timestamp: now.getTime(),
-        timeDisplay: formatDateTime(now),
-        count: activeCount
-      }];
+    const fetchActivityHistory = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/dashboard/activity_history');
+        if (!response.ok) throw new Error('Failed to fetch activity history');
 
-      const oneHourAgo = now.getTime() - 60 * 60 * 1000;
-      return newHistory
-        .filter(item => item.timestamp >= oneHourAgo)
-        .sort((a, b) => a.timestamp - b.timestamp);
-    });
-  }, [robots]);
+        const data = await response.json();
+        if (isMounted) {
+          setActivityHistory(data.activityHistory || []);
+        }
+      } catch (error) {
+        console.error('Error fetching activity history:', error);
+        // При ошибке оставляем пустой массив (или предыдущие данные)
+        if (isMounted) setActivityHistory([]);
+      }
+    };
 
-  useEffect(() => {
-    const interval = setInterval(() => {
-      const activeCount = robots.filter(r => r.status === 'active').length;
-      const now = new Date();
+    // 1. Первая загрузка сразу
+    fetchActivityHistory();
 
-      setActivityHistory(prev => {
-        const newHistory = [...prev, {
-          timestamp: now.getTime(),
-          timeDisplay: formatDateTime(now),
-          count: activeCount
-        }];
+    // 2. Затем каждые 10 минут
+    intervalId = setInterval(fetchActivityHistory, 10 * 60 * 1000);
 
-        const oneHourAgo = now.getTime() - 60 * 60 * 1000;
-        return newHistory
-          .filter(item => item.timestamp >= oneHourAgo)
-          .sort((a, b) => a.timestamp - b.timestamp);
-      });
-    }, 10 * 60 * 1000);
-
-    return () => clearInterval(interval);
-  }, [robots]);
+    // Очистка
+    return () => {
+      isMounted = false;
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, []);
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
@@ -89,9 +89,21 @@ export default function Dashboard({ onOpenCSVModal }) {
               Текущий мониторинг
             </h2>
             <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${websocketStatus === 'connected' ? 'bg-green-500 animate-pulse' : websocketStatus === 'reconnecting' ? 'bg-yellow-500 animate-pulse' : 'bg-red-500'}`} />
+              <div
+                className={`w-3 h-3 rounded-full ${
+                  websocketStatus === 'connected'
+                    ? 'bg-green-500 animate-pulse'
+                    : websocketStatus === 'reconnecting'
+                    ? 'bg-yellow-500 animate-pulse'
+                    : 'bg-red-500'
+                }`}
+              />
               <span className="text-sm text-gray-600 dark:text-gray-300">
-                {websocketStatus === 'connected' ? 'Live' : websocketStatus === 'reconnecting' ? 'Переподключение...' : 'Офлайн'}
+                {websocketStatus === 'connected'
+                  ? 'Live'
+                  : websocketStatus === 'reconnecting'
+                  ? 'Переподключение...'
+                  : 'Офлайн'}
               </span>
             </div>
           </div>

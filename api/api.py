@@ -174,9 +174,11 @@ def receive_robot_data(data: dict):
     status = db.add_robot_data(data)
 
 
-@app.get("/api/robots/active-by-interval")
-async def get_active_robots_by_interval():
-    return db.fetch_robots_last_hour_data()
+@app.get("/api/dashboard/activity_history")
+@cache(expire=6)  # Кэш на 10 минут для ограничения обновлений
+def get_activity_history():
+    history = db.get_activity_history()
+    return {"activityHistory": history}
 
 @app.post("/api/inventory/import")
 def import_inventory_csv(file: UploadFile = File(...), current_user: UserResponse = Depends(access_level)):

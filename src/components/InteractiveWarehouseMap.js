@@ -532,7 +532,7 @@ const InteractiveWarehouseMap = ({ zones, robots, theme }) => {
               </div>
               
               <div className="text-xs text-gray-500 dark:text-gray-400 mt-3 select-text">
-                Обновлено: {formatTime(tooltip.robot.lastUpdate)}
+                Обновлено: {tooltip.robot.lastUpdate}
               </div>
 
             </div>

@@ -525,7 +525,7 @@ class DataBaseManager:
         with self.DBSession() as _s:
             # Активные роботы
             active_robots_count, total_robots = self.get_active_robots()
-    
+            active_robots_last_hour = self.fetch_robots_last_hour_data()
             # Средний заряд батареи
             avg_battery = self.average_battery_charge() or 0
     
@@ -564,7 +564,7 @@ class DataBaseManager:
                         "id": robot.id,
                         "status": robot.status,
                         "battery_level": robot.battery_level,
-                        "last_update": robot.last_update.strftime("%H:%M:%S %d-%m-%Y") if robot.last_update else None,
+                        "last_update": robot.last_update.strftime("%H:%M:%S %d.%m.%Y") if robot.last_update else None,
                         "current_zone": robot.current_zone,
                         "current_row": robot.current_row,
                         "current_shelf": robot.current_shelf
@@ -1048,7 +1048,7 @@ class DataBaseManager:
         return avg_battery
 
 
-    async def fetch_robots_last_hour_data(self):
+    def fetch_robots_last_hour_data(self):
         """
         Получает данные о роботах за последний час,
         делит время на интервалы и считает количество активных роботов.
@@ -1107,6 +1107,37 @@ class DataBaseManager:
 
         result = {i: len(active_robots_by_slot[i]) for i in range(6)}
         return result
+
+    def get_activity_history(self):
+        """
+        Форматирует данные из fetch_robots_last_hour_data в формат для фронтенда.
+        """
+        raw_data = self.fetch_robots_last_hour_data()
+        
+        now = datetime.now()
+        hour_ago = now - timedelta(hours=1)
+        
+        activity_history = []
+        
+        for i in range(6):
+            start_time = hour_ago + timedelta(minutes=i * 10)
+            end_time = start_time + timedelta(minutes=10)
+            if end_time > now:
+                end_time = now
+            
+            # Используем end_time как точку для timestamp
+            timestamp = int(end_time.timestamp() * 1000)  # JS-style timestamp in ms
+            time_display = end_time.strftime('%d.%m.%Y %H:%M:%S')  # Соответствует formatDateTime
+            
+            count = raw_data[i]
+            
+            activity_history.append({
+                'timestamp': timestamp,
+                'timeDisplay': time_display,
+                'count': count
+            })
+        
+        return activity_history
 
 db = DataBaseManager(settings.CONN_STR)
 
