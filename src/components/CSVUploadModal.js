@@ -10,9 +10,61 @@ function CSVUploadModal({ isOpen, onClose }) {
   const [previewData, setPreviewData] = useState([]);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [selectedFile, setSelectedFile] = useState(null);
+  const [error, setError] = useState('');
 
-  const onDrop = (acceptedFiles) => {
+  // Функция для сброса состояния
+  const resetState = () => {
+    setSelectedFile(null);
+    setPreviewData([]);
+    setUploadProgress(0);
+    setError('');
+  };
+
+  // Функция для обработки закрытия модального окна
+  const handleClose = () => {
+    resetState();
+    onClose();
+  };
+
+  // Функция для проверки типа файла
+  const isValidFileType = (file) => {
+    const allowedTypes = [
+      'text/csv',
+      'application/vnd.ms-excel',
+      'application/csv',
+      'text/x-csv',
+      'application/x-csv',
+      'text/comma-separated-values',
+      'text/x-comma-separated-values'
+    ];
+    
+    // Проверяем MIME type и расширение файла
+    const isCSVType = allowedTypes.includes(file.type);
+    const hasCSVExtension = file.name.toLowerCase().endsWith('.csv');
+    
+    return isCSVType || hasCSVExtension;
+  };
+
+  const onDrop = (acceptedFiles, rejectedFiles) => {
+    setError(''); // Сбрасываем ошибку
+    
+    // Проверяем отклоненные файлы
+    if (rejectedFiles && rejectedFiles.length > 0) {
+      const rejection = rejectedFiles[0];
+      if (rejection.errors[0].code === 'file-invalid-type') {
+        setError('Пожалуйста, выберите файл в формате CSV');
+        return;
+      }
+    }
+
     const file = acceptedFiles[0];
+    
+    // Дополнительная проверка типа файла
+    if (!isValidFileType(file)) {
+      setError('Неверный формат файла. Пожалуйста, выберите CSV файл.');
+      return;
+    }
+
     setSelectedFile(file);
     
     // Только предпросмотр, без автоматической загрузки
@@ -23,12 +75,25 @@ function CSVUploadModal({ isOpen, onClose }) {
       header: true,
       delimiter: ';',
       encoding: 'UTF-8',
+      error: (error) => {
+        setError(`Ошибка чтения CSV файла: ${error.message}`);
+      }
     });
   };
 
   const handleUpload = async () => {
     if (!selectedFile) return;
     
+    // Проверяем тип файла перед загрузкой
+    if (!isValidFileType(selectedFile)) {
+      setError('Неверный формат файла. Пожалуйста, выберите CSV файл.');
+      return;
+    }
+
+    // Сбрасываем прогресс и ошибки
+    setUploadProgress(0);
+    setError('');
+
     // Симуляция прогресса
     let progress = 0;
     const interval = setInterval(() => {
@@ -40,16 +105,22 @@ function CSVUploadModal({ isOpen, onClose }) {
     try {
       await dispatch(uploadCSV(selectedFile)).unwrap();
       // Закрываем модальное окно после успешной загрузки
-      onClose();
+      handleClose();
     } catch (error) {
       console.error('Ошибка загрузки:', error);
-      alert(`Ошибка загрузки: ${error.message}`);
+      setError(`Ошибка загрузки: ${error.message}`);
+      setUploadProgress(0); // Сбрасываем прогресс при ошибке
     }
   };
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
-    accept: '.csv',
+    accept: {
+      'text/csv': ['.csv'],
+      'application/vnd.ms-excel': ['.csv']
+    },
+    maxFiles: 1,
+    multiple: false
   });
 
   if (!isOpen) return null;
@@ -76,6 +147,13 @@ function CSVUploadModal({ isOpen, onClose }) {
             Перетащите CSV файл сюда или нажмите для выбора
           </p>
         </div>
+
+        {/* Отображение ошибок */}
+        {error && (
+          <div className="mt-2 p-2 bg-red-100 dark:bg-red-900 border border-red-400 dark:border-red-600 text-red-700 dark:text-red-200 rounded text-sm">
+            {error}
+          </div>
+        )}
 
         {/* Информация о формате */}
         <p className="text-sm text-gray-600 dark:text-gray-300 mt-2">
@@ -129,14 +207,14 @@ function CSVUploadModal({ isOpen, onClose }) {
         {/* Кнопки действий */}
         <div className="mt-4 flex justify-end space-x-2">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="bg-gray-600 dark:bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600"
           >
             Отмена
           </button>
           <button
             onClick={handleUpload}
-            disabled={!selectedFile || uploadProgress > 0}
+            disabled={!selectedFile || uploadProgress > 0 || error}
             className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {uploadProgress > 0 ? 'Загрузка...' : 'Загрузить'}

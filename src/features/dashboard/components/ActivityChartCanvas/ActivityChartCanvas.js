@@ -122,10 +122,6 @@ export default function ActivityChartCanvas({ activityHistory, theme, robots, fo
           <p className="text-sm">Текущее количество активных роботов: {robots.filter(r => r.status === 'active').length}</p>
         </div>
       )}
-
-      <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-center">
-        Обновление каждые 10 минут • Последнее обновление: {formatDateTime(new Date())}
-      </div>
     </div>
   );
 }
