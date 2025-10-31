@@ -22,6 +22,7 @@ function Header({ onOpenCSVModal }) {
   // - на других страницах — visible + clickable
   const isDashboard = location.pathname === '/dashboard';
   const showCSVButton = !!onOpenCSVModal;
+  const isAdmin = location.pathname === '/admin';
 
   return (
     <header className="bg-white dark:bg-gray-800 shadow-md">
@@ -112,14 +113,14 @@ function Header({ onOpenCSVModal }) {
         {/* КНОПКА CSV — ВСЕГДА ЕСТЬ, НО НА DASHBOARD: НЕВИДИМА + НЕКЛИКАБЕЛЬНА */}
         {showCSVButton && (
           <button
-            onClick={isDashboard ? undefined : onOpenCSVModal}
+            onClick={(isDashboard || isAdmin )? undefined : onOpenCSVModal}
             className={`bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg transition-all text-sm ${
-              isDashboard
+              isDashboard || isAdmin
                 ? 'invisible pointer-events-none'  // ← НЕВИДИМА + НЕКЛИКАБЕЛЬНА
                 : 'hover:bg-blue-700 dark:hover:bg-blue-800'
             }`}
-            disabled={isDashboard}
-            aria-hidden={isDashboard}
+            disabled={isDashboard || isAdmin}
+            aria-hidden={isDashboard || isAdmin}
           >
             Загрузить CSV
           </button>
