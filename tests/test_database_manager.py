@@ -424,7 +424,6 @@ class TestDataBaseManager:
 
     def test_get_ai_predictions_found(self, db_manager, mock_session):
         """Тест получения AI предсказаний, когда они есть."""
-        # Создаем мок предсказания
         mock_prediction = MagicMock()
         mock_prediction.id = 1
         mock_prediction.product_id = "TEL-0001"
@@ -433,48 +432,29 @@ class TestDataBaseManager:
         mock_prediction.recommended_order = 100
         mock_prediction.confidence_score = 0.8
         mock_prediction.created_at = datetime(2025, 10, 26, 19, 25, 0)
-        
-        # Возвращаем список с одним предсказанием
-        mock_session.query.return_value.order_by.return_value.limit.return_value.all.return_value = [mock_prediction]
-        
-        # Временный патч для исправления формата возврата
-        original_get_ai_predictions = db_manager.get_ai_predictions
-        
-        def fixed_get_ai_predictions():
-            predictions = original_get_ai_predictions()
-            if predictions and len(predictions) > 0:
-                pred = predictions[0]
-                return {
-                    "id": pred.id,
-                    "product_id": pred.product_id,
-                    "prediction_date": pred.prediction_date.isoformat() if pred.prediction_date else None,
-                    "days_until_stockout": pred.days_until_stockout,
-                    "recommended_order": pred.recommended_order,
-                    "confidence_score": float(pred.confidence_score) if pred.confidence_score else None,
-                    "created_at": pred.created_at.isoformat() if pred.created_at else None
-                }
-            return None
-        
-        with patch.object(db_manager, 'get_ai_predictions', side_effect=fixed_get_ai_predictions):
-            result = db_manager.get_ai_predictions()
-            
-            assert result is not None
-            assert result['product_id'] == "TEL-0001"
-            assert result['prediction_date'] == "2025-10-26T19:30:00"
-            assert result['days_until_stockout'] == 5
-            assert result['recommended_order'] == 100
-            assert result['confidence_score'] == 0.8
-            assert result['created_at'] == "2025-10-26T19:25:00"
 
+        mock_session.query.return_value.order_by.return_value.limit.return_value.all.return_value = [mock_prediction]
+
+        result = db_manager.get_ai_predictions()
+
+        assert result is not None
+        assert result["id"] == 1
+        assert result["product_id"] == "TEL-0001"
+        assert result["prediction_date"] == "2025-10-26T19:30:00"
+        assert result["days_until_stockout"] == 5
+        assert result["recommended_order"] == 100
+        assert result["confidence_score"] == 0.8
+        assert result["created_at"] == "2025-10-26T19:25:00"
+        
     def test_get_ai_predictions_not_found(self, db_manager, mock_session):
         """Тест получения AI предсказаний, когда их нет."""
         mock_session.query.return_value.order_by.return_value.limit.return_value.all.return_value = []
-        
+            
         result = db_manager.get_ai_predictions()
-        
+            
         assert result is None
 
-    # --- Utility Tests ---
+        # --- Utility Tests ---
 
     def test_get_active_robots(self, db_manager, mock_session):
         """Тест получения количества активных роботов."""

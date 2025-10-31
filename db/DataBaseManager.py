@@ -1,3 +1,4 @@
+from collections import defaultdict
 from db.models import Base, User, Robot, Product, InventoryHistory, AIPrediction
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import create_engine, func, desc
@@ -914,23 +915,23 @@ class DataBaseManager:
             return PredictResponse(predictions=[], confidence=0.0)
         return inventory_data, historical_data
     
-    def get_ai_predictions(self):
-        with self.DBSession() as _s:
-            prediction = _s.query(self.AIPrediction).order_by(self.AIPrediction.prediction_date.desc()).limit(10).all()
-            if prediction:
-                logging.info(f"Found latest prediction for product_id: {prediction.product_id}, date: {prediction.prediction_date}")
-                return {
-                    "id": prediction.id,
-                    "product_id": prediction.product_id,
-                    "prediction_date": prediction.prediction_date.isoformat() if prediction.prediction_date else None,
-                    "days_until_stockout": prediction.days_until_stockout,
-                    "recommended_order": prediction.recommended_order,
-                    "confidence_score": float(prediction.confidence_score) if prediction.confidence_score else None,
-                    "created_at": prediction.created_at.isoformat() if prediction.created_at else None
-                }
-            else:
-                logging.info(f"Entry not found")
-                return None
+    # def get_ai_predictions(self):
+    #     with self.DBSession() as _s:
+    #         prediction = _s.query(self.AIPrediction).order_by(self.AIPrediction.prediction_date.desc()).limit(10).all()
+    #         if prediction:
+    #             logging.info(f"Found latest prediction for product_id: {prediction.product_id}, date: {prediction.prediction_date}")
+    #             return {
+    #                 "id": prediction.id,
+    #                 "product_id": prediction.product_id,
+    #                 "prediction_date": prediction.prediction_date.isoformat() if prediction.prediction_date else None,
+    #                 "days_until_stockout": prediction.days_until_stockout,
+    #                 "recommended_order": prediction.recommended_order,
+    #                 "confidence_score": float(prediction.confidence_score) if prediction.confidence_score else None,
+    #                 "created_at": prediction.created_at.isoformat() if prediction.created_at else None
+    #             }
+    #         else:
+    #             logging.info(f"Entry not found")
+    #             return None
 
     # def get_products_unique(self, historical_data):
     #     unique_product_id = []
