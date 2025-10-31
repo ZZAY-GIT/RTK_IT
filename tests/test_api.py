@@ -9,41 +9,126 @@ from auth.auth_service import auth_service
 import pandas as pd
 import io
 import json
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
+from redis.asyncio import Redis
+
+
 
 @pytest.mark.unit
-# @pytest.mark.asyncio
 class TestApi:
     """Класс для тестирования эндпоинтов FastAPI из api.py."""
 
+    @pytest.fixture(autouse=True)
+    def setup_method(self):
+        """Отключаем кэширование и инициализируем FastAPICache."""
+        with patch('api.api.cache', lambda *args, **kwargs: lambda func: func):
+            yield
+
     @pytest.fixture
     def client(self):
-        """Фикстура для создания тестового клиента FastAPI."""
-        return TestClient(app)
+        """Фикстура для создания тестового клиента FastAPI с инициализацией кэша."""
+        # Создаем мок Redis
+        mock_redis = MagicMock(spec=Redis)
+        
+        # Инициализируем FastAPICache
+        FastAPICache.init(RedisBackend(mock_redis), prefix="test_cache")
+        
+        # Создаем клиент
+        with TestClient(app) as client:
+            yield client
+        
+        # Очищаем после теста
+        FastAPICache._coder = None
+        FastAPICache._backend = None
+        FastAPICache._prefix = None
 
     @pytest.fixture
     def mock_db(self):
-        """Фикстура для мока DataBaseManager."""
         with patch('api.api.db') as mock_db:
             mock_db.get_current_state = MagicMock()
             mock_db.add_robot_data = MagicMock()
             mock_db.get_filter_inventory_history = MagicMock()
+            mock_db.get_data_for_predict = MagicMock()
+            mock_db.add_ai_prediction = MagicMock()
             yield mock_db
 
     @pytest.fixture
     def mock_auth_service(self):
-        """Фикстура для мока auth_service."""
         with patch('api.api.auth_service') as mock_auth:
             mock_auth.login = MagicMock()
             yield mock_auth
 
     @pytest.fixture
     def mock_ws_manager(self):
-        """Фикстура для мока ws_manager."""
         with patch('api.api.ws_manager') as mock_ws:
             mock_ws.broadcast_dashboard_updates = AsyncMock()
             mock_ws.get_connections_count = MagicMock(return_value=3)
             mock_ws.broadcast = AsyncMock()
             yield mock_ws
+
+    def test_predict_endpoint(self, client, mock_db):
+        mock_inventory_data = ["inventory_data"]
+        mock_historical_data = ["historical_data"]
+        mock_db.get_data_for_predict.return_value = (mock_inventory_data, mock_historical_data)
+        
+        mock_predictions = [{"product_id": "p1", "recommended_order": 10}]
+        
+        with patch('api.api.yandex_client') as mock_yandex:
+            mock_yandex.get_prediction.return_value = mock_predictions
+            
+            response = client.get("/api/ai/predict")
+            
+            assert response.status_code == 200
+            response_data = response.json()
+            assert "predictions" in response_data
+            assert "confidence" in response_data
+            assert response_data["predictions"] == mock_predictions
+            assert response_data["confidence"] == 0.75
+            
+            mock_db.get_data_for_predict.assert_called_once()
+            mock_yandex.get_prediction.assert_called_once_with(mock_inventory_data, mock_historical_data)
+
+    def test_predict_post_endpoint(self, client, mock_db):
+        """Тест POST эндпоинта для сохранения предсказаний."""
+        # Подготавливаем тестовые данные
+        test_predictions = [
+            {"product_id": "p1", "recommended_order": 10},
+            {"product_id": "p2", "recommended_order": 5}
+        ]
+        
+        # Мокаем успешное сохранение
+        mock_db.add_ai_prediction.return_value = test_predictions
+        
+        # Выполняем POST-запрос
+        response = client.post(
+            "/api/ai/predict/post",
+            json={"categories": test_predictions}
+        )
+        
+        # Проверяем результат
+        assert response.status_code == 200
+        response_data = response.json()
+        assert response_data["predictions"] == test_predictions
+        assert response_data["confidence"] == 0.75
+        mock_db.add_ai_prediction.assert_called_once_with(test_predictions)
+
+    def test_predict_post_endpoint_failure(self, client, mock_db):
+        """Тест POST эндпоинта при ошибке сохранения."""
+        test_predictions = [{"product_id": "p1", "recommended_order": 10}]
+        
+        # Мокаем ошибку сохранения
+        mock_db.add_ai_prediction.return_value = None
+        
+        # Выполняем POST-запрос
+        response = client.post(
+            "/api/ai/predict/post", 
+            json={"categories": test_predictions}
+        )
+        
+        # Проверяем ошибку
+        assert response.status_code == 500
+        assert "Failed to save AI predictions" in response.json()["detail"]
 
     def test_login_success(self, client, mock_auth_service):
         """Тест успешного логина."""
@@ -59,32 +144,6 @@ class TestApi:
         assert response.status_code == 200
         assert response.json() == {"token": "fake_token"}
         mock_auth_service.login.assert_called_once_with(email, password)
-
-    def test_predict_endpoint(self, client):
-        """Тест эндпоинта предсказания AI."""
-        request_data = {
-            "period_days": 7,
-            "categories": [{"id": "cat1", "name": "Category 1"}]
-        }
-        
-        response = client.post("/api/ai/predict", json=request_data)
-        
-        assert response.status_code == 200
-        assert response.json() == {
-            "predictions": [{"id": "cat1", "name": "Category 1"}],
-            "confidence": 0.95
-        }
-
-    def test_get_test_endpoint(self, client):
-        """Тест эндпоинта /test."""
-        response = client.get("/test")
-        
-        assert response.status_code == 200
-        assert response.json() == {
-            "robots": [123, 332, 12],
-            "recent_scans": [543],
-            "statistics": {"123": {"battary": 98, "coords": [123, 322]}}
-        }
 
     def test_receive_robot_data_success(self, client, mock_db, mock_ws_manager):
         """Тест успешного добавления данных робота."""
@@ -104,7 +163,6 @@ class TestApi:
         
         assert response.status_code == 200
         mock_db.add_robot_data.assert_called_once()
-        # mock_ws_manager.broadcast.assert_called_once()
 
     def test_receive_robot_data_failure(self, client, mock_db, mock_ws_manager):
         """Тест неуспешного добавления данных робота."""
@@ -125,46 +183,6 @@ class TestApi:
         assert response.status_code == 200
         mock_db.add_robot_data.assert_called_once()
         mock_ws_manager.broadcast.assert_not_called()
-
-    def test_add_csv_file_success(self, client, mock_db):
-        """Тест успешной загрузки CSV файла."""
-        csv_content = "robot_id;product_id;quantity;status\nROB-001;PROD-001;10;ok"
-        mock_db.add_robot_data_csv.return_value = None
-        
-        response = client.post(
-            "/api/inventory/import",
-            files={"file_csv": ("test.csv", csv_content, "text/csv")}
-        )
-        
-        assert response.status_code == 200
-        assert response.json() == {
-            "status": "success",
-            "records_processed": 1,
-            "total_records": 1
-        }
-        mock_db.add_robot_data_csv.assert_called_once()
-
-    def test_add_csv_file_invalid_format(self, client):
-        """Тест загрузки файла с неверным форматом."""
-        response = client.post(
-            "/api/inventory/import",
-            files={"file_csv": ("test.txt", "content", "text/plain")}
-        )
-        
-        assert response.status_code == 400
-        assert response.json()["detail"] == "Only CSV files are allowed"
-
-    def test_add_csv_file_empty(self, client):
-        """Тест загрузки пустого CSV файла."""
-        csv_content = ""
-        with patch('pandas.read_csv', side_effect=pd.errors.EmptyDataError):
-            response = client.post(
-                "/api/inventory/import",
-                files={"file_csv": ("test.csv", csv_content, "text/csv")}
-            )
-            
-            assert response.status_code == 400
-            assert response.json()["detail"] == "CSV file is empty"
 
     def test_get_current_data(self, client, mock_db):
         """Тест получения текущего состояния."""

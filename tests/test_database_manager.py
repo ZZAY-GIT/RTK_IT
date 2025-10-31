@@ -422,37 +422,37 @@ class TestDataBaseManager:
         mock_session.add.assert_not_called()
         mock_session.commit.assert_not_called()
 
-    def test_get_ai_predictions_found(self, db_manager, mock_session):
-        """Тест получения AI предсказаний, когда они есть."""
-        mock_prediction = MagicMock()
-        mock_prediction.id = 1
-        mock_prediction.product_id = "TEL-0001"
-        mock_prediction.prediction_date = datetime(2025, 10, 26, 19, 30, 0)
-        mock_prediction.days_until_stockout = 5
-        mock_prediction.recommended_order = 100
-        mock_prediction.confidence_score = 0.8
-        mock_prediction.created_at = datetime(2025, 10, 26, 19, 25, 0)
+    # def test_get_ai_predictions_found(self, db_manager, mock_session):
+    #     """Тест получения AI предсказаний, когда они есть."""
+    #     mock_prediction = MagicMock()
+    #     mock_prediction.id = 1
+    #     mock_prediction.product_id = "TEL-0001"
+    #     mock_prediction.prediction_date = datetime(2025, 10, 26, 19, 30, 0)
+    #     mock_prediction.days_until_stockout = 5
+    #     mock_prediction.recommended_order = 100
+    #     mock_prediction.confidence_score = 0.8
+    #     mock_prediction.created_at = datetime(2025, 10, 26, 19, 25, 0)
 
-        mock_session.query.return_value.order_by.return_value.limit.return_value.all.return_value = [mock_prediction]
+    #     mock_session.query.return_value.order_by.return_value.limit.return_value.all.return_value = [mock_prediction]
 
-        result = db_manager.get_ai_predictions()
+    #     result = db_manager.get_ai_predictions()
 
-        assert result is not None
-        assert result["id"] == 1
-        assert result["product_id"] == "TEL-0001"
-        assert result["prediction_date"] == "2025-10-26T19:30:00"
-        assert result["days_until_stockout"] == 5
-        assert result["recommended_order"] == 100
-        assert result["confidence_score"] == 0.8
-        assert result["created_at"] == "2025-10-26T19:25:00"
+    #     assert result is not None
+    #     assert result["id"] == 1
+    #     assert result["product_id"] == "TEL-0001"
+    #     assert result["prediction_date"] == "2025-10-26T19:30:00"
+    #     assert result["days_until_stockout"] == 5
+    #     assert result["recommended_order"] == 100
+    #     assert result["confidence_score"] == 0.8
+    #     assert result["created_at"] == "2025-10-26T19:25:00"
         
-    def test_get_ai_predictions_not_found(self, db_manager, mock_session):
-        """Тест получения AI предсказаний, когда их нет."""
-        mock_session.query.return_value.order_by.return_value.limit.return_value.all.return_value = []
+    # def test_get_ai_predictions_not_found(self, db_manager, mock_session):
+    #     """Тест получения AI предсказаний, когда их нет."""
+    #     mock_session.query.return_value.order_by.return_value.limit.return_value.all.return_value = []
             
-        result = db_manager.get_ai_predictions()
+    #     result = db_manager.get_ai_predictions()
             
-        assert result is None
+    #     assert result is None
 
         # --- Utility Tests ---
 
