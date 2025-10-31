@@ -564,7 +564,7 @@ class DataBaseManager:
                         "id": robot.id,
                         "status": robot.status,
                         "battery_level": robot.battery_level,
-                        "last_update": robot.last_update.isoformat() if robot.last_update else None,
+                        "last_update": robot.last_update.strftime("%H:%M:%S %d-%m-%Y") if robot.last_update else None,
                         "current_zone": robot.current_zone,
                         "current_row": robot.current_row,
                         "current_shelf": robot.current_shelf
@@ -581,7 +581,7 @@ class DataBaseManager:
                         "zone": scan.zone,
                         "shelf_number": scan.shelf_number,
                         "status": scan.status,
-                        "scanned_at": scan.scanned_at.isoformat() if scan.scanned_at else None
+                        "scanned_at": scan.scanned_at.strftime("%H:%M:%S %d.%m.%Y") if scan.scanned_at else None
                     }
                     for scan, product_name in recent_scans  # Распаковываем кортеж
                 ]
