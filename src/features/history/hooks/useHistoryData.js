@@ -24,7 +24,9 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
       robotId: item.robot_id || 'N/A',
       zone: item.zone || 'N/A',
       shelfNumber: item.shelf_number || 'N/A',
-      status: item.status ? item.status.toLowerCase() : 'unknown',
+      // ИСПРАВЛЕНИЕ: преобразуем статусы из БД в русские для отображения
+      status: getDisplayStatus(item.status),
+      statusDb: item.status, // сохраняем оригинальный статус из БД
       expectedQuantity: item.recommended_order || 0,
       discrepancy: item.discrepancy || 0,
       predictionConfidence: item.prediction_confidence || null,
@@ -32,9 +34,28 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
     }));
   };
 
+  // Функция для преобразования статусов БД в русские для отображения
+  const getDisplayStatus = (statusDb) => {
+    switch (statusDb) {
+      case 'OK': return 'ok';
+      case 'LOW_STOCK': return 'low';
+      case 'CRITICAL': return 'critical';
+      default: return 'unknown';
+    }
+  };
+
+  // Функция для преобразования русских статусов в статусы БД
+  const getDbStatus = (displayStatus) => {
+    switch (displayStatus) {
+      case 'ok': return 'OK';
+      case 'low': return 'LOW_STOCK';
+      case 'critical': return 'CRITICAL';
+      default: return null;
+    }
+  };
+
   const apiResponse = reduxHistoryData || {};
   
-  // ИСПРАВЛЕНИЕ: используем данные из API ответа
   const finalHistoryData = transformApiData(apiResponse);
   const finalTotalItems = apiResponse.total || finalHistoryData.length;
 
@@ -58,9 +79,11 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
     if (filters.endDate) apiFilters.to_date = filters.endDate;
     if (filters.zones?.length > 0) apiFilters.zone = filters.zones[0];
     if (filters.status?.length > 0) {
-      apiFilters.status = filters.status[0]; // Берем первый статус
+      // ИСПРАВЛЕНИЕ: преобразуем русский статус в статус БД
+      const dbStatus = getDbStatus(filters.status[0]);
+      if (dbStatus) apiFilters.status = dbStatus;
     }
-    if (filters.search) apiFilters.search = filters.search;
+    if (filters.search) apiFilters.product_id = filters.search;
     return apiFilters;
   };
 
@@ -111,14 +134,13 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
     loadHistoryData(newFilters);
   };
 
-  // ИСПРАВЛЕНИЕ: убрал автоматическое применение фильтров, так как оно конфликтует
-  // с ручным применением через кнопку "Применить"
-  // useEffect(() => {
-  //   if (filters.startDate || filters.endDate || filters.zones?.length > 0 || filters.status?.length > 0 || filters.search) {
-  //     const timer = setTimeout(applyFilters, 500);
-  //     return () => clearTimeout(timer);
-  //   }
-  // }, [filters.startDate, filters.endDate, filters.zones, filters.status, filters.search]);
+  // Включаем автоматическое применение фильтров с debounce
+  useEffect(() => {
+    if (filters.startDate || filters.endDate || filters.zones?.length > 0 || filters.status?.length > 0 || filters.search) {
+      const timer = setTimeout(applyFilters, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [filters.startDate, filters.endDate, filters.zones, filters.status, filters.search]);
 
   const getCurrentTableItems = () => {
     return finalHistoryData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -246,6 +268,6 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
     endItem,
     hasActiveFilters,
     hasChartData,
-    applyFilters // ← ДОБАВЛЕНО: возвращаем applyFilters
+    applyFilters
   };
 }

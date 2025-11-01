@@ -968,11 +968,10 @@ class DataBaseManager:
 
 
     # # Сводка работы роботов по фильтрам
-    def get_filter_inventory_history(self, from_date=None, to_date=None, zone=None, shelf=None, status=None, category=None):
+    def get_filter_inventory_history(self, from_date=None, to_date=None, zone=None, shelf=None, status=None, product_id=None):
         with self.DBSession() as _s:
-            # Базовый запрос для inventory_history с JOIN к products
             query = _s.query(InventoryHistory, Product.name.label('product_name'))\
-                      .join(Product, InventoryHistory.product_id == Product.id)
+                    .join(Product, InventoryHistory.product_id == Product.id)
 
             # Применяем фильтры
             if from_date is not None:
@@ -985,42 +984,39 @@ class DataBaseManager:
                 query = query.filter(InventoryHistory.shelf_number == shelf)
             if status is not None:
                 query = query.filter(InventoryHistory.status == status)
+            # ДОБАВЬТЕ фильтр по product_id
+            if product_id is not None:
+                query = query.filter(InventoryHistory.product_id.contains(product_id))
 
             fileter_history = []
-            # Получаем все записи inventory_history с именами продуктов
             records = query.all()
-            # Собираем все product_id для batch запроса к AI predictions
             product_ids = [inv_his.product_id for inv_his, product_name in records if inv_his.product_id]
-            # Получаем все AI predictions для этих product_ids одним запросом
             ai_predictions = {}
             if product_ids:
                 predictions_query = _s.query(AIPrediction).filter(
                     AIPrediction.product_id.in_(product_ids)
                 )
-                # Группируем predictions по product_id, берем последнее по дате
                 for pred in predictions_query:
                     if pred.product_id not in ai_predictions:
                         ai_predictions[pred.product_id] = pred
                     else:
-                        # Если есть несколько predictions, берем самую свежую
                         existing_pred = ai_predictions[pred.product_id]
                         if pred.prediction_date and existing_pred.prediction_date:
                             if pred.prediction_date > existing_pred.prediction_date:
                                 ai_predictions[pred.product_id] = pred
-            # Формируем результат
+            
             for inv_his, product_name in records:
                 result_json = {
                     'id': inv_his.id,
                     'robot_id': inv_his.robot_id,
                     'product_id': inv_his.product_id,
-                    'product_name': product_name,  # Добавлено имя продукта
+                    'product_name': product_name,
                     'quantity': inv_his.quantity,
                     'zone': inv_his.zone,
                     'shelf_number': inv_his.shelf_number,
                     'status': inv_his.status,
                     'scanned_at': inv_his.scanned_at.isoformat() if inv_his.scanned_at else None,
                 }
-                # Ищем AI предсказание для этого product_id
                 ai_pred = ai_predictions.get(inv_his.product_id)
                 if ai_pred:
                     result_json['recommended_order'] = ai_pred.recommended_order
