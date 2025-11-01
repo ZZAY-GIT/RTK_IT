@@ -59,13 +59,18 @@ export default function Dashboard({ onOpenCSVModal }) {
         }
       } catch (error) {
         console.error('Error fetching activity history:', error);
+        // При ошибке оставляем пустой массив (или предыдущие данные)
         if (isMounted) setActivityHistory([]);
       }
     };
 
+    // 1. Первая загрузка сразу
     fetchActivityHistory();
+
+    // 2. Затем каждые 10 минут
     intervalId = setInterval(fetchActivityHistory, 10 * 60 * 1000);
 
+    // Очистка
     return () => {
       isMounted = false;
       if (intervalId) clearInterval(intervalId);
@@ -76,77 +81,12 @@ export default function Dashboard({ onOpenCSVModal }) {
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <Header onOpenCSVModal={onOpenCSVModal} />
 
-      {/* === МОБИЛЬНАЯ ВЕРСИЯ (только на экранах < sm) === */}
-      <div className="sm:hidden p-4 space-y-4">
-        {/* Карта */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-4">
-          <div className="flex justify-between items-center mb-3">
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-              Текущий мониторинг
-            </h2>
-            <div className="flex items-center gap-2">
-              <div
-                className={`w-3 h-3 rounded-full ${
-                  websocketStatus === 'connected'
-                    ? 'bg-green-500 animate-pulse'
-                    : websocketStatus === 'reconnecting'
-                    ? 'bg-yellow-500 animate-pulse'
-                    : 'bg-red-500'
-                }`}
-              />
-              <span className="text-sm text-gray-600 dark:text-gray-300">
-                {websocketStatus === 'connected'
-                  ? 'Live'
-                  : websocketStatus === 'reconnecting'
-                  ? 'Переподключение...'
-                  : 'Офлайн'}
-              </span>
-            </div>
-          </div>
-          <div className="h-[300px] rounded-lg overflow-hidden">
-            <InteractiveWarehouseMap zones={zones} robots={robots} theme={theme} />
-          </div>
-        </div>
-
-        {/* Статистика */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-4">
-          <h2 className="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-100">
-            Статистика в реальном времени
-          </h2>
-          <StatsGrid robots={robots} recentScans={recentScans} />
-        </div>
-
-        {/* График */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-4">
-          <ActivityChartCanvas
-            activityHistory={activityHistory}
-            theme={theme}
-            robots={robots}
-            formatDateTime={formatDateTime}
-          />
-        </div>
-
-        {/* Последние сканирования */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-4 overflow-x-auto">
-          <RecentScansTable recentScans={recentScans} />
-        </div>
-
-        {/* Прогноз ИИ */}
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-4">
-          <AIPredictions
-            aiPredictions={aiPredictions}
-            loading={loading}
-            onRefresh={() => dispatch(fetchAIPredictions())}
-          />
-        </div>
-      </div>
-
-      {/* === ПК ВЕРСИЯ (от sm и выше) — НЕ ТРОНУТА === */}
-      <div className="hidden sm:block">
-        <div className="p-6 grid grid-cols-2 gap-6">
-          {/* === КАРТА СКЛАДА === */}
-          <div className="flex flex-col h-full">
-            <div className="flex justify-between items-center mb-4 px-6 pt-6">
+      <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* === ЛЕВАЯ КОЛОНКА (КАРТА) === */}
+        <div className="flex flex-col h-full">
+          <div className="flex-grow bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            {/* Заголовок теперь внутри карты */}
+            <div className="flex justify-between items-center p-4 lg:p-6 border-b border-gray-200 dark:border-gray-700">
               <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
                 Текущий мониторинг
               </h2>
@@ -169,39 +109,41 @@ export default function Dashboard({ onOpenCSVModal }) {
                 </span>
               </div>
             </div>
-            <div className="flex-grow bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            {/* Карта */}
+            <div className="h-full min-h-[500px]">
               <InteractiveWarehouseMap zones={zones} robots={robots} theme={theme} />
             </div>
           </div>
+        </div>
 
-          {/* === ПРАВАЯ КОЛОНКА === */}
-          <div className="col-span-1 space-y-4 h-full">
-            <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-4">
-              <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">
-                Статистика в реальном времени
-              </h2>
+        {/* === ПРАВАЯ КОЛОНКА === */}
+        <div className="space-y-6 h-full">
+          {/* === СТАТИСТИКА И ГРАФИК === */}
+          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-6">
+            <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">
+              Статистика в реальном времени
+            </h2>
 
-              <StatsGrid robots={robots} recentScans={recentScans} />
-            
-              {/* === ГРАФИК === */}
-              <ActivityChartCanvas
-                activityHistory={activityHistory}
-                theme={theme}
-                robots={robots}
-                formatDateTime={formatDateTime}
-              />
-            </div>
+            <StatsGrid robots={robots} recentScans={recentScans} />
 
-            {/* === ПОСЛЕДНИЕ СКАНИРОВАНИЯ === */}
-            <RecentScansTable recentScans={recentScans} />
-
-            {/* === ПРОГНОЗ ИИ === */}
-            <AIPredictions
-              aiPredictions={aiPredictions}
-              loading={loading}
-              onRefresh={() => dispatch(fetchAIPredictions())}
+            {/* === ГРАФИК === */}
+            <ActivityChartCanvas
+              activityHistory={activityHistory}
+              theme={theme}
+              robots={robots}
+              formatDateTime={formatDateTime}
             />
           </div>
+
+          {/* === ПОСЛЕДНИЕ СКАНИРОВАНИЯ === */}
+          <RecentScansTable recentScans={recentScans} />
+
+          {/* === ПРОГНОЗ ИИ === */}
+          <AIPredictions
+            aiPredictions={aiPredictions}
+            loading={loading}
+            onRefresh={() => dispatch(fetchAIPredictions())}
+          />
         </div>
       </div>
     </div>

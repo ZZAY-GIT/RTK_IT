@@ -1,7 +1,7 @@
 // src/features/dashboard/components/StatsGrid.js
 export default function StatsGrid({ robots, recentScans }) {
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
       <div className="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
         <p className="text-sm text-gray-600 dark:text-gray-300">Активных роботов</p>
         <p className="text-xl font-bold text-gray-800 dark:text-gray-100">
