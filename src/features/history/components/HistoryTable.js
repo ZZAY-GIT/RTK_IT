@@ -21,7 +21,7 @@ export default function HistoryTable({
         <div className="text-sm text-gray-600 dark:text-gray-300">Показано {startItem}-{endItem} из {finalTotalItems}</div>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-sm">
+        <table className="w-full text-sm min-w-[800px]">
           <thead>
             <tr className="bg-gray-100 dark:bg-gray-700">
               <th className="p-2 text-left">

@@ -1,7 +1,7 @@
 // src/components/InteractiveWarehouseMap.jsx
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 
-const InteractiveWarehouseMap = ({ zones, robots, theme }) => {
+const InteractiveWarehouseMap = ({ zones, robots, theme, height = 600 }) => {
   const svgRef = useRef(null);
   const viewportRef = useRef(null);
   const [scale, setScale] = useState(1);

@@ -1,9 +1,10 @@
 // src/features/admin/components/Admin.js
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useDispatch } from 'react-redux';
 import Header from '../../../components/Header';
 import { useTheme } from '../../../hooks/useTheme';
 import { useAuth } from '../../../hooks/useAuth';
+import { MenuIcon, XIcon } from '@heroicons/react/outline';
 
 import AdminTabs from './AdminTabs';
 import TableControls from './TableControls';
@@ -77,15 +78,51 @@ export default function Admin({ onOpenCSVModal }) {
     handleTabChange
   } = useAdminData(user, dispatch);
 
+  // Мобильное меню
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900">
       <Header onOpenCSVModal={onOpenCSVModal} />
-      <div className="p-6">
 
-        {/* Вкладки */}
-        <AdminTabs activeTab={activeTab} isOperator={isOperator} handleTabChange={handleTabChange} />
+      {/* Мобильное меню */}
+      <div className="lg:hidden p-4 flex justify-between items-center border-b dark:border-gray-700">
+        <h1 className="text-xl font-bold text-gray-800 dark:text-gray-100">
+          {activeTab === 'products' && 'Товары'}
+          {activeTab === 'users' && 'Пользователи'}
+          {activeTab === 'robots' && 'Роботы'}
+        </h1>
+        <button
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 rounded-lg bg-gray-200 dark:bg-gray-700"
+        >
+          {mobileMenuOpen ? <XIcon className="h-6 w-6" /> : <MenuIcon className="h-6 w-6" />}
+        </button>
+      </div>
 
-        {/* Панель управления выбором и экспортом */}
+      {/* Мобильные вкладки */}
+      {mobileMenuOpen && (
+        <div className="lg:hidden p-4 bg-white dark:bg-gray-800 shadow-md">
+          <AdminTabs
+            activeTab={activeTab}
+            isOperator={isOperator}
+            handleTabChange={(tab) => {
+              handleTabChange(tab);
+              setMobileMenuOpen(false);
+            }}
+            isMobile
+          />
+        </div>
+      )}
+
+      <div className="p-4 lg:p-6 max-w-7xl mx-auto">
+
+        {/* Десктопные вкладки */}
+        <div className="hidden lg:block mb-6">
+          <AdminTabs activeTab={activeTab} isOperator={isOperator} handleTabChange={handleTabChange} />
+        </div>
+
+        {/* Панель управления */}
         <TableControls
           activeTab={activeTab}
           paginatedProducts={paginatedProducts}
@@ -95,9 +132,10 @@ export default function Admin({ onOpenCSVModal }) {
           clearSelection={clearSelection}
           exportToExcel={exportToExcel}
           selectedItems={selectedItems}
+          isMobile
         />
 
-        {/* Управление товарами */}
+        {/* Таблицы */}
         {activeTab === 'products' && (
           <ProductsTable
             paginatedProducts={paginatedProducts}
@@ -117,7 +155,6 @@ export default function Admin({ onOpenCSVModal }) {
           />
         )}
 
-        {/* Управление пользователями */}
         {isOperator && activeTab === 'users' && (
           <UsersTable
             paginatedUsers={paginatedUsers}
@@ -137,7 +174,6 @@ export default function Admin({ onOpenCSVModal }) {
           />
         )}
 
-        {/* Управление роботами */}
         {activeTab === 'robots' && (
           <RobotsTable
             paginatedRobots={paginatedRobots}
@@ -157,29 +193,10 @@ export default function Admin({ onOpenCSVModal }) {
           />
         )}
 
-        {/* Модальные окна */}
-        <ProductModal
-          isOpen={isProductModalOpen}
-          editingProduct={editingProduct}
-          handleSubmit={handleAddOrUpdateProduct}
-          handleCancel={handleCancelProduct}
-        />
-
-        {isOperator && (
-          <UserModal
-            isOpen={isUserModalOpen}
-            editingUser={editingUser}
-            handleSubmit={handleAddOrUpdateUser}
-            handleCancel={handleCancelUser}
-          />
-        )}
-
-        <RobotModal
-          isOpen={isRobotModalOpen}
-          editingRobot={editingRobot}
-          handleSubmit={handleAddOrUpdateRobot}
-          handleCancel={handleCancelRobot}
-        />
+        {/* Модальные окна — адаптивные */}
+        <ProductModal isOpen={isProductModalOpen} editingProduct={editingProduct} handleSubmit={handleAddOrUpdateProduct} handleCancel={handleCancelProduct} />
+        {isOperator && <UserModal isOpen={isUserModalOpen} editingUser={editingUser} handleSubmit={handleAddOrUpdateUser} handleCancel={handleCancelUser} />}
+        <RobotModal isOpen={isRobotModalOpen} editingRobot={editingRobot} handleSubmit={handleAddOrUpdateRobot} handleCancel={handleCancelRobot} />
       </div>
     </div>
   );

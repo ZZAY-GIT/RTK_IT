@@ -4,7 +4,7 @@ export default function RobotModal({ isOpen, editingRobot, handleSubmit, handleC
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-800 rounded-2xl p-6 w-full max-w-md">
+      <div className="bg-white dark:bg-gray-800 rounded-2xl p-4 w-full max-w-md mx-4">
         <h2 className="text-lg font-semibold mb-4 text-gray-800 dark:text-gray-100">
           {editingRobot ? 'Редактировать робота' : 'Добавить робота'}
         </h2>

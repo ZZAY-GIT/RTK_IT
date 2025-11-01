@@ -267,7 +267,7 @@ const warehouseSlice = createSlice({
     historyData: [],
     products: [],
     users: [],
-    loading: false,
+    // УБРАЛИ дублирование loading
     error: null,
     filters: {
       startDate: null,
@@ -278,9 +278,8 @@ const warehouseSlice = createSlice({
       search: '',
     },
     websocketStatus: 'disconnected',
-    loading: false,
-    error: null,
-    statistics: { // добавляем статистику
+    loading: false, // ← ОСТАВИЛИ ТОЛЬКО ОДИН loading
+    statistics: {
       active_robots: 0,
       total_robots: 0,
       scanned_today: 0,
@@ -307,13 +306,16 @@ const warehouseSlice = createSlice({
       if (data.statistics) {
         state.statistics = data.statistics;
       }
-      // zones пока не обрабатываем, так как их нет в данных бэкенда
     },
   },
   extraReducers: (builder) => {
     builder
       // Dashboard
+      .addCase(fetchDashboardData.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(fetchDashboardData.fulfilled, (state, action) => {
+        state.loading = false;
         const data = action.payload;
         
         if (data.robots) {
@@ -326,34 +328,48 @@ const warehouseSlice = createSlice({
           state.statistics = data.statistics;
         }
       })
+      .addCase(fetchDashboardData.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message;
+      })
+
+      // History Data
+      .addCase(fetchHistoryData.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(fetchHistoryData.fulfilled, (state, action) => {
+        state.loading = false;
         state.historyData = action.payload;
       })
+      .addCase(fetchHistoryData.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.error.message;
+      })
+
+      // AI Predictions
       .addCase(fetchAIPredictions.pending, (state) => {
-      state.loading = true;
-      state.error = null;
+        state.loading = true;
+        state.error = null;
       })
       .addCase(fetchAIPredictions.fulfilled, (state, action) => {
         state.loading = false;
-        // ✅ КЛЮЧЕВОЙ МОМЕНТ: сохраняем только массив из поля 'predictions'
         state.aiPredictions = action.payload.predictions || [];
       })
       .addCase(fetchAIPredictions.rejected, (state, action) => {
         state.loading = false;
         state.error = action.error.message;
       })
+
+      // CSV Upload
+      .addCase(uploadCSV.pending, (state) => {
+        state.loading = true;
+      })
       .addCase(uploadCSV.fulfilled, (state, action) => {
         state.loading = false;
-        
-        // Обрабатываем структуру ответа от бэкенда
         const result = action.payload;
         
         if (result.status === "success" || result.status === "partial_success") {
-          // Показываем уведомление об успешной загрузке
           console.log(`✅ CSV импорт: ${result.message}`);
-          
-          // Можно обновить данные после успешного импорта
-          // Например, перезагрузить историю или дашборд
         } else {
           console.error(`❌ CSV импорт: ${result.error}`);
         }

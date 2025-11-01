@@ -1,4 +1,6 @@
 // src/features/admin/components/TableControls.js
+import { CheckCircleIcon, RefreshIcon, DocumentDownloadIcon } from '@heroicons/react/outline';
+
 export default function TableControls({
   activeTab,
   paginatedProducts,
@@ -9,29 +11,44 @@ export default function TableControls({
   exportToExcel,
   selectedItems
 }) {
+  // Определяем, сколько элементов в текущей таблице
+  const itemCount = 
+    activeTab === 'products' ? paginatedProducts.length :
+    activeTab === 'users' ? paginatedUsers.length :
+    activeTab === 'robots' ? paginatedRobots.length : 0;
+
   return (
-    <div className="flex space-x-4 mb-6">
-      <button 
+    <div className="mb-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+      {/* Кнопка: Выбрать все */}
+      <button
         onClick={selectAllItems}
-        className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 flex items-center"
+        className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-all text-sm font-medium shadow-sm"
       >
-        Выбрать все {
-          activeTab === 'products' ? paginatedProducts.length :
-          activeTab === 'users' ? paginatedUsers.length :
-          activeTab === 'robots' ? paginatedRobots.length : 0
-        }
+        <CheckCircleIcon className="h-5 w-5" />
+        <span>Выбрать все ({itemCount})</span>
       </button>
-      <button 
+
+      {/* Кнопка: Сбросить */}
+      <button
         onClick={clearSelection}
-        className="bg-gray-600 dark:bg-gray-700 text-white px-4 py-2 rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 flex items-center"
+        className="flex items-center justify-center space-x-2 px-4 py-2.5 bg-gray-600 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600 transition-all text-sm font-medium shadow-sm"
       >
-        Сбросить выбор
+        <RefreshIcon className="h-5 w-5" />
+        <span>Сбросить</span>
       </button>
-      <button 
+
+      {/* Кнопка: Экспорт */}
+      <button
         onClick={exportToExcel}
-        className="bg-green-600 dark:bg-green-700 text-white px-4 py-2 rounded-lg hover:bg-green-700 dark:hover:bg-green-800 flex items-center"
+        disabled={selectedItems.length === 0}
+        className={`flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-all shadow-sm ${
+          selectedItems.length > 0
+            ? 'bg-green-600 dark:bg-green-700 text-white hover:bg-green-700 dark:hover:bg-green-800'
+            : 'bg-gray-400 dark:bg-gray-600 text-gray-300 dark:text-gray-500 cursor-not-allowed'
+        }`}
       >
-        Экспорт в Excel ({selectedItems.length})
+        <DocumentDownloadIcon className="h-5 w-5" />
+        <span>Экспорт ({selectedItems.length})</span>
       </button>
     </div>
   );

@@ -18,17 +18,18 @@ export default function RobotsTable({
   filteredRobots
 }) {
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-4 mb-6">
-      <div className="flex justify-between items-center mb-4">
+    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-4 mb-6 overflow-x-auto">
+       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 space-y-2 sm:space-y-0">
         <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">Управление роботами</h2>
         <button
           onClick={() => { setEditingRobot(null); setIsRobotModalOpen(true); }}
-          className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 flex items-center"
+          className="bg-blue-600 dark:bg-blue-700 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 flex items-center text-sm"
         >
-          <PlusIcon className="h-5 w-5 mr-2" />
+          <PlusIcon className="h-4 w-4 mr-1" />
           Добавить робота
         </button>
       </div>
+      
       <div className="mb-4">
         <label className="block text-sm text-gray-600 dark:text-gray-300">Поиск по ID или зоне</label>
         <div className="relative">
@@ -37,15 +38,17 @@ export default function RobotsTable({
             value={robotSearch}
             onChange={(e) => setRobotSearch(e.target.value)}
             placeholder="Введите ID или зону"
-            className="w-full p-2 pl-10 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
+            className="w-full p-2 pl-8 text-sm border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
           />
-          <SearchIcon className="absolute left-3 top-3 h-5 w-5 text-gray-400 dark:text-gray-300" />
+          <SearchIcon className="absolute left-2 top-2.5 h-4 w-4 text-gray-400 dark:text-gray-300" />
         </div>
       </div>
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="bg-gray-100 dark:bg-gray-700">
-            <th className="p-2 text-left">
+
+      <div className="overflow-x-auto -mx-4 px-4">
+        <table className="w-full text-xs min-w-[600px]">
+          <thead>
+            <tr className="bg-gray-100 dark:bg-gray-700">
+              <th className="p-2 text-left w-8">
               <input
                 type="checkbox"
                 checked={selectedItems.length === paginatedRobots.length && paginatedRobots.length > 0}
@@ -107,15 +110,16 @@ export default function RobotsTable({
           )}
         </tbody>
       </table>
+      </div>
       <div className="flex justify-between mt-4">
-        <div>
-          <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))} className="p-2 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100">
+          <select value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))} 
+          className="p-1.5 text-xs border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
+          >
             <option value={20}>20</option>
             <option value={50}>50</option>
             <option value={100}>100</option>
           </select>
-        </div>
-        <div>
+        <div className="flex items-center space-x-1">
           <button onClick={() => setCurrentPage(p => Math.max(1, p - 1))} className="px-3 py-1 bg-gray-600 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600">Назад</button>
           <span className="mx-2 text-gray-800 dark:text-gray-100">{currentPage}</span>
           <button onClick={() => setCurrentPage(p => p + 1)} className="px-3 py-1 bg-gray-600 dark:bg-gray-700 text-white rounded-lg hover:bg-gray-700 dark:hover:bg-gray-600">Вперед</button>

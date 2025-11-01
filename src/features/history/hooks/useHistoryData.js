@@ -1,6 +1,6 @@
 // src/features/history/hooks/useHistoryData.js
 import { useEffect, useState } from 'react';
-import { fetchHistoryData, setFilters } from '../../../store/warehouseSlice';
+import { fetchHistoryData } from '../../../store/warehouseSlice';
 import * as XLSX from 'xlsx';
 
 export function useHistoryData(reduxHistoryData, filters, dispatch) {
@@ -33,10 +33,12 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
   };
 
   const apiResponse = reduxHistoryData || {};
-  const historyItems = transformApiData(apiResponse);
-  const totalItems = apiResponse.total || 0;
+  
+  // ИСПРАВЛЕНИЕ: используем данные из API ответа
+  const finalHistoryData = transformApiData(apiResponse);
+  const finalTotalItems = apiResponse.total || finalHistoryData.length;
 
-  const allUniqueProducts = [...new Map(historyItems.map(item => [item.productId, {
+  const allUniqueProducts = [...new Map(finalHistoryData.map(item => [item.productId, {
     productId: item.productId,
     productName: item.productName
   }])).values()];
@@ -45,14 +47,6 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
     product.productName.toLowerCase().includes(productSearch.toLowerCase()) ||
     product.productId.toLowerCase().includes(productSearch.toLowerCase())
   );
-
-  const testHistoryData = [
-    { id: 1, date: '2024-01-25', productId: 'P1', productName: 'Товар 1', actualQuantity: 100, robotId: 'R1', zone: 'A1', status: 'ok', expectedQuantity: 100, discrepancy: 0 },
-    { id: 2, date: '2024-01-24', productId: 'P1', productName: 'Товар 1', actualQuantity: 90, robotId: 'R1', zone: 'A1', status: 'ok', expectedQuantity: 100, discrepancy: -10 },
-  ];
-
-  const finalHistoryData = historyItems.length > 0 ? historyItems : testHistoryData;
-  const finalTotalItems = historyItems.length > 0 ? totalItems : testHistoryData.length;
 
   useEffect(() => {
     loadHistoryData();
@@ -64,9 +58,7 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
     if (filters.endDate) apiFilters.to_date = filters.endDate;
     if (filters.zones?.length > 0) apiFilters.zone = filters.zones[0];
     if (filters.status?.length > 0) {
-      const statusMap = { 'ok': 'ok', 'low': 'low', 'Низкий остаток': 'low', 'Критично': 'critical', 'critical': 'critical' };
-      const apiStatus = statusMap[filters.status[0]];
-      if (apiStatus) apiFilters.status = apiStatus;
+      apiFilters.status = filters.status[0]; // Берем первый статус
     }
     if (filters.search) apiFilters.search = filters.search;
     return apiFilters;
@@ -76,6 +68,7 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
     setLoading(true);
     try {
       const apiFilters = prepareApiFilters(newFilters);
+      console.log('Sending request with filters:', apiFilters);
       await dispatch(fetchHistoryData(apiFilters));
     } catch (error) {
       console.error('Error loading history data:', error);
@@ -86,7 +79,7 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
 
   const handleFilterChange = (newFilters) => {
     const updatedFilters = { ...filters, ...newFilters };
-    dispatch(setFilters(updatedFilters));
+    dispatch({ type: 'warehouse/setFilters', payload: updatedFilters });
     if (newFilters.startDate || newFilters.endDate) setActiveQuickPeriod(null);
   };
 
@@ -97,7 +90,7 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
 
   const resetFilters = () => {
     const resetFilters = { startDate: null, endDate: null, zones: [], categories: [], status: [], search: '' };
-    dispatch(setFilters(resetFilters));
+    dispatch({ type: 'warehouse/setFilters', payload: resetFilters });
     setActiveQuickPeriod(null);
     loadHistoryData(resetFilters);
   };
@@ -112,18 +105,20 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
       case 'Месяц': const monthAgo = new Date(today); monthAgo.setMonth(monthAgo.getMonth() - 1); startDate = monthAgo.toISOString().split('T')[0]; endDate = today.toISOString().split('T')[0]; break;
     }
     const newFilters = { ...filters, startDate, endDate };
-    dispatch(setFilters(newFilters));
+    dispatch({ type: 'warehouse/setFilters', payload: newFilters });
     setActiveQuickPeriod(period);
     setCurrentPage(1);
     loadHistoryData(newFilters);
   };
 
-  useEffect(() => {
-    if (filters.startDate || filters.endDate || filters.zones?.length > 0 || filters.status?.length > 0 || filters.search) {
-      const timer = setTimeout(applyFilters, 500);
-      return () => clearTimeout(timer);
-    }
-  }, [filters.startDate, filters.endDate, filters.zones, filters.status, filters.search]);
+  // ИСПРАВЛЕНИЕ: убрал автоматическое применение фильтров, так как оно конфликтует
+  // с ручным применением через кнопку "Применить"
+  // useEffect(() => {
+  //   if (filters.startDate || filters.endDate || filters.zones?.length > 0 || filters.status?.length > 0 || filters.search) {
+  //     const timer = setTimeout(applyFilters, 500);
+  //     return () => clearTimeout(timer);
+  //   }
+  // }, [filters.startDate, filters.endDate, filters.zones, filters.status, filters.search]);
 
   const getCurrentTableItems = () => {
     return finalHistoryData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
@@ -210,7 +205,7 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
   const hasChartData = chartSelectedItems.length > 0 && finalHistoryData.some(item => chartSelectedItems.some(s => s.productId === item.productId));
 
   return {
-    historyItems,
+    historyItems: finalHistoryData,
     finalHistoryData,
     finalTotalItems,
     allUniqueProducts,
@@ -239,6 +234,7 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
     clearTableSelection,
     isAllTableItemsSelected,
     isItemSelected,
+    handleSelectAllTableItems,
     handleSelectTableItem,
     clearChartSelection,
     exportToExcel,
@@ -249,6 +245,7 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
     startItem,
     endItem,
     hasActiveFilters,
-    hasChartData
+    hasChartData,
+    applyFilters // ← ДОБАВЛЕНО: возвращаем applyFilters
   };
 }
