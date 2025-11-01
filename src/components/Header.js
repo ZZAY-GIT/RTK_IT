@@ -40,6 +40,18 @@ function Header({ onOpenCSVModal }) {
 
         {/* Правая часть */}
         <div className="flex items-center space-x-2 sm:space-x-4">
+          {/* Тема */}
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+            aria-label="Переключить тему"
+          >
+            {theme === 'light' ? (
+              <MoonIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+            ) : (
+              <SunIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+            )}
+          </button>
           {/* --- МОБИЛЬНЫЙ ПРОФИЛЬ --- */}
           <div className="relative">
             <button
@@ -74,27 +86,16 @@ function Header({ onOpenCSVModal }) {
             )}
           </div>
 
-          {/* --- ДЕСКТОПНЫЙ ПРОФИЛЬ --- */}
+          {/* --- ДЕСКТОПНЫЙ ПРОФИЛЬ ---
           <div className="hidden sm:block text-sm text-right">
             <div className="font-medium text-gray-700 dark:text-gray-200">{user?.name || user?.email}</div>
             <div className="text-xs text-gray-500 dark:text-gray-400">
               {user?.role === 'admin' ? 'Администратор' : 
                user?.role === 'operator' ? 'Оператор' : 'Пользователь'}
             </div>
-          </div>
+          </div> */}
 
-          {/* Тема */}
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-            aria-label="Переключить тему"
-          >
-            {theme === 'light' ? (
-              <MoonIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
-            ) : (
-              <SunIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
-            )}
-          </button>
+
 
           {/* Гамбургер */}
           <button
