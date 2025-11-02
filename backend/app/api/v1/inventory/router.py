@@ -1,5 +1,3 @@
-# app/api/v1/dashboard/router.py
-
 from fastapi import APIRouter, UploadFile, HTTPException, Query, File
 from typing import Optional
 from datetime import datetime

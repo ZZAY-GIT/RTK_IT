@@ -1,5 +1,3 @@
-# app/api/v1/admin/robots/router.py
-
 from fastapi import (
     APIRouter,
     Depends,

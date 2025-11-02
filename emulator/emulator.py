@@ -2,6 +2,8 @@ import time
 import random
 from datetime import datetime, timezone
 import threading
+import requests
+
 
 # Shared state for occupied positions
 occupied_positions = set()
@@ -124,7 +126,7 @@ class RobotEmulator:
         return False
 
     def send_data(self):
-        import requests
+        
 
         data = {
             "robot_id": self.robot_id,
@@ -174,7 +176,6 @@ def generate_random_robot_id():
     return robot_id
 
 if __name__ == "__main__":
-    api_url = "http://localhost:8000"
     num_robots = int(input("Enter number of robots:"))
     robots = []
     for i in range(num_robots):

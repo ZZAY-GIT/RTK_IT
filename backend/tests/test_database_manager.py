@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy.exc import IntegrityError
 from db.DataBaseManager import DataBaseManager, verify_password, hash_password
 from db.models import User, Robot, InventoryHistory, Product, AIPrediction
-from settings import settings
+from backend.settings import settings
 from api.schemas import UserResponse, ProductResponse, RobotResponse
 
 

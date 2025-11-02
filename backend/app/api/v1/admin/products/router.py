@@ -1,5 +1,3 @@
-# app/api/v1/admin/products/router.py
-
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from typing import List, Optional, Annotated
 from app.api.v1.schemas import ProductCreate, ProductUpdate, ProductResponse

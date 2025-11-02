@@ -1,7 +1,7 @@
 import json
 import httpx
 import re
-from app.core.settings import settings
+from settings import settings
 from datetime import datetime
 import logging
 

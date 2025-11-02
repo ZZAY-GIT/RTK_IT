@@ -15,7 +15,7 @@ from app.api.v1.schemas import (
     RobotResponse,
     PredictResponse,
 )
-from app.core.settings import settings
+from settings import settings
 from app.core.security import hash_password
 
 

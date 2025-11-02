@@ -1,5 +1,3 @@
-# app/api/v1/admin/users/router.py
-
 from fastapi import APIRouter, Depends, HTTPException, status
 from typing import List, Annotated
 from app.api.v1.schemas import UserCreate, UserUpdate, UserResponse

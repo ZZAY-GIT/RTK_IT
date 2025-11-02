@@ -1,8 +1,7 @@
-# app/api/v1/auth/service.py
 from fastapi import HTTPException, status
 import jwt
 from datetime import datetime, timedelta
-from app.core.settings import settings
+from settings import settings
 from app.db.DataBaseManager import db
 from app.core.security import verify_password
 from app.api.v1.schemas import UserResponse
