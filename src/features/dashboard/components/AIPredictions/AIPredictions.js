@@ -9,7 +9,7 @@ export default function AIPredictions({ aiPredictions, loading, onRefresh }) {
         <button
           onClick={onRefresh}
           disabled={loading}
-          className="bg-blue-600 dark:bg-blue-700 text-white px-3 py-1 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 disabled:bg-gray-400 disabled:cursor-not-allowed"
+          className="bg-blue-600 dark:bg-blue-700 text-white px-3 py-1 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 disabled:bg-gray-400 disabled:cursor-not-allowed text-sm md:text-base md:px-3 md:py-1"
         >
           {loading ? 'Генерация...' : 'Обновить прогноз'}
         </button>

@@ -2,17 +2,17 @@
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../hooks/useTheme';
-import { SunIcon, MoonIcon, MenuIcon, XIcon, UserCircleIcon, ChevronDownIcon } from '@heroicons/react/outline';
+import { SunIcon, MoonIcon, MenuIcon, XIcon, UserCircleIcon, ChevronDownIcon, BellIcon } from '@heroicons/react/outline';
 import logo from '../assets/logo.png';
 import { useState } from 'react';
 
-function Header({ onOpenCSVModal }) {
+function Header({ onOpenCSVModal, notificationCount, onNotificationsClick }) { // ДОБАВЛЕНЫ ПРОПСЫ
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false); // ← НОВОЕ: профиль
+  const [profileOpen, setProfileOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -40,6 +40,20 @@ function Header({ onOpenCSVModal }) {
 
         {/* Правая часть */}
         <div className="flex items-center space-x-2 sm:space-x-4">
+          {/* Кнопка уведомлений - ДОБАВЛЕНО */}
+          <button
+            onClick={onNotificationsClick}
+            className="relative p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+            aria-label="Уведомления"
+          >
+            <BellIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
+            {notificationCount > 0 && (
+              <span className="absolute -top-1 -right-1 px-1.5 py-0.5 text-xs font-medium bg-red-500 text-white rounded-full min-w-5 flex items-center justify-center">
+                {notificationCount > 99 ? '99+' : notificationCount}
+              </span>
+            )}
+          </button>
+
           {/* Тема */}
           <button
             onClick={toggleTheme}
@@ -52,7 +66,8 @@ function Header({ onOpenCSVModal }) {
               <SunIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
             )}
           </button>
-          {/* --- МОБИЛЬНЫЙ ПРОФИЛЬ --- */}
+
+          {/* Профиль */}
           <div className="relative">
             <button
               onClick={() => setProfileOpen(!profileOpen)}
@@ -85,29 +100,6 @@ function Header({ onOpenCSVModal }) {
               </div>
             )}
           </div>
-
-          {/* Тема */}
-          <button
-            onClick={toggleTheme}
-            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
-            aria-label="Переключить тему"
-          >
-            {theme === 'light' ? (
-              <MoonIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
-            ) : (
-              <SunIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
-            )}
-          </button>
-          {/* --- ДЕСКТОПНЫЙ ПРОФИЛЬ ---
-          <div className="hidden sm:block text-sm text-right">
-            <div className="font-medium text-gray-700 dark:text-gray-200">{user?.name || user?.email}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              {user?.role === 'admin' ? 'Администратор' : 
-               user?.role === 'operator' ? 'Оператор' : 'Пользователь'}
-            </div>
-          </div> */}
-
-
 
           {/* Гамбургер */}
           <button

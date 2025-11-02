@@ -1,18 +1,30 @@
 // src/components/InteractiveWarehouseMap.jsx
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 
-const InteractiveWarehouseMap = ({ zones, robots, theme, height = 600 }) => {
+const InteractiveWarehouseMap = ({ 
+  zones, 
+  robots, 
+  recentScans, // ДОБАВЛЕНО: получаем recentScans
+  theme, 
+  height = 600,
+  mapControls,
+  onMapControlsChange,
+  highlightedZone
+}) => {
   const svgRef = useRef(null);
   const viewportRef = useRef(null);
-  const [scale, setScale] = useState(1);
-  const [translateX, setTranslateX] = useState(0);
-  const [translateY, setTranslateY] = useState(0);
-  const [isPanningEnabled, setIsPanningEnabled] = useState(false);
+  const [tooltip, setTooltip] = useState(null);
+  const [zoneTooltip, setZoneTooltip] = useState(null);
+  const tooltipRef = useRef(null);
   const startRef = useRef(null);
   const lastTouchDist = useRef(0);
   const lastTouchCenter = useRef(null);
-  const [tooltip, setTooltip] = useState(null);
-  const tooltipRef = useRef(null);
+
+  // ОБНОВЛЕНО: используем recentScans вместо отдельного запроса
+  const [zoneData, setZoneData] = useState({});
+  const [loading, setLoading] = useState(false);
+
+  const { scale, translateX, translateY, isPanningEnabled } = mapControls;
 
   const CELL_SIZE = 20;
   const COLS = 26;
@@ -25,26 +37,82 @@ const InteractiveWarehouseMap = ({ zones, robots, theme, height = 600 }) => {
   const CONTENT_WIDTH = COLS * CELL_SIZE;
   const CONTENT_HEIGHT = ROWS * CELL_SIZE;
 
-  /* ---------- инициализация: карта влезает полностью ---------- */
+  // ОБНОВЛЕНО: используем recentScans для формирования данных зон
   useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
+  console.log('RecentScans received:', recentScans);
+  
+  if (!recentScans || recentScans.length === 0) {
+    // Если нет данных, инициализируем пустыми зонами
+    const emptyData = {};
+    for (let col = 0; col < COLS; col++) {
+      for (let row = 0; row < ROWS; row++) {
+        const zoneId = `${String.fromCharCode(65 + col)}${row + 1}`;
+        emptyData[zoneId] = null;
+      }
+    }
+    setZoneData(emptyData);
+    setLoading(false);
+    return;
+  }
 
-    const rect = svg.getBoundingClientRect();
-    const fitScale = Math.min(rect.width / MAP_WIDTH, rect.height / MAP_HEIGHT);
-    const targetW = MAP_WIDTH * fitScale;
-    const targetH = MAP_HEIGHT * fitScale;
+  setLoading(true);
+  
+  const zoneDataFromScans = {};
+    
+    // Обрабатываем recentScans для получения данных зон
+    recentScans.forEach(scan => {
+    console.log('Processing scan:', scan);
+    
+    const zone = scan.zone;
+    
+    if (zone) {
+      // ГЕНЕРИРУЕМ СЛУЧАЙНЫЙ row_number от 1 до 50 для демонстрации
+      const rowNumber = Math.floor(Math.random() * 50) + 1;
+      const zoneId = `${zone}${rowNumber}`;
+      
+      console.log(`Generated Zone ID: ${zoneId}`, scan);
+      
+      const existingData = zoneDataFromScans[zoneId];
+      const existingTime = existingData?.time ? new Date(existingData.time) : null;
+      const newTime = scan.time ? new Date(scan.time) : null;
 
-    const targetTranslateX = rect.width / 2 - targetW / 2;
-    const targetTranslateY = rect.height / 2 - targetH / 2;
+      // Берем самые свежие данные
+      if (!existingData || (newTime && (!existingTime || newTime > existingTime))) {
+        // ГЕНЕРИРУЕМ СТАТУС на основе productId для разнообразия
+        const productHash = scan.productId ? scan.productId.charCodeAt(0) + scan.productId.charCodeAt(scan.productId.length - 1) : 0;
+        let status = 'OK';
+        if (productHash % 3 === 0) status = 'LOW_STOCK';
+        if (productHash % 5 === 0) status = 'CRITICAL';
+        
+        zoneDataFromScans[zoneId] = {
+          status: status,
+          product: scan.productId,
+          quantity: Math.floor(Math.random() * 100) + 1, // случайное количество
+          time: scan.time,
+          robot_id: scan.robotId
+        };
+      }
+    }
+  });
 
-    setScale(1);
-    setTranslateX(Math.min(targetTranslateX, 0));
-    setTranslateY(Math.min(targetTranslateY, 0));
-    setIsPanningEnabled(false);
-  }, []);
+    // Заполняем остальные зоны null
+    for (let col = 0; col < COLS; col++) {
+    for (let row = 0; row < ROWS; row++) {
+      const zoneId = `${String.fromCharCode(65 + col)}${row + 1}`;
+      if (!zoneDataFromScans[zoneId]) {
+        zoneDataFromScans[zoneId] = null;
+      }
+    }
+  }
 
-  /* ---------- трансформация ---------- */
+  console.log('Final zone data:', zoneDataFromScans);
+  console.log('Zones with data:', Object.keys(zoneDataFromScans).filter(key => zoneDataFromScans[key] !== null).length);
+
+  setZoneData(zoneDataFromScans);
+  setLoading(false);
+}, [recentScans]);
+
+  // Применяем трансформацию при изменении контролов
   useEffect(() => {
     if (viewportRef.current) {
       viewportRef.current.setAttribute(
@@ -54,27 +122,19 @@ const InteractiveWarehouseMap = ({ zones, robots, theme, height = 600 }) => {
     }
   }, [scale, translateX, translateY]);
 
-  /* ---------- ограничение панорамирования (ИСПРАВЛЕНО) ---------- */
+  // Ограничение панорамирования
   const clampPan = useCallback((x, y) => {
     const svg = svgRef.current;
     if (!svg) return { x, y };
 
     const rect = svg.getBoundingClientRect();
 
-    // --- Новая логика: границы основаны на контенте, а не на всей карте с отступами ---
-
-    // 1. Ограничение pan'а вправо и вниз.
-    // Мы можем сдвинуть карту так, чтобы правый/нижний край КОНТЕНТА был у края видимой области.
     const minTranslateX = rect.width / scale - (PADDING + CONTENT_WIDTH);
     const minTranslateY = rect.height / scale - (PADDING + CONTENT_HEIGHT);
 
-    // 2. Ограничение pan'а влево и вверх.
-    // Мы можем сдвинуть карту так, чтобы левый/верхний край КОНТЕНТА был у края видимой области.
-    // Это значит, что сам <g> можно сдвинуть на величину PADDING.
     const maxTranslateX = PADDING;
     const maxTranslateY = PADDING;
 
-    // Если контент меньше видимой области, не даем ему "болтаться"
     const finalMinX = Math.min(minTranslateX, maxTranslateX);
     const finalMinY = Math.min(minTranslateY, maxTranslateY);
 
@@ -84,7 +144,15 @@ const InteractiveWarehouseMap = ({ zones, robots, theme, height = 600 }) => {
     };
   }, [scale]);
 
-  /* ---------- зум ---------- */
+  // Обновляем панорамирование через callback
+  const updatePanPosition = useCallback((newX, newY) => {
+    if (onMapControlsChange) {
+      const clamped = clampPan(newX, newY);
+      onMapControlsChange(clamped.x, clamped.y);
+    }
+  }, [onMapControlsChange, clampPan]);
+
+  // Зум
   const applyZoom = (delta, clientX, clientY) => {
     const svg = svgRef.current;
     if (!svg) return;
@@ -102,21 +170,15 @@ const InteractiveWarehouseMap = ({ zones, robots, theme, height = 600 }) => {
     const newTranslateX = translateX + mx * (1 / newScale - 1 / oldScale);
     const newTranslateY = translateY + my * (1 / newScale - 1 / oldScale);
 
-    const clamped = clampPan(newTranslateX, newTranslateY);
-    setTranslateX(newTranslateX);
-    setTranslateY(newTranslateY);
-
-    setScale(newScale);
-    setIsPanningEnabled(newScale > 1);
+    updatePanPosition(newTranslateX, newTranslateY);
   };
 
-  /* ---------- wheel с предотвращением скролла страницы ---------- */
+  // Wheel с предотвращением скролла страницы
   useEffect(() => {
     const svg = svgRef.current;
     if (!svg) return;
 
     const handleWheel = (e) => {
-      // Если курсор над тултипом - разрешаем скролл страницы
       if (tooltipRef.current && tooltipRef.current.contains(e.target)) {
         return;
       }
@@ -129,9 +191,8 @@ const InteractiveWarehouseMap = ({ zones, robots, theme, height = 600 }) => {
     return () => svg.removeEventListener('wheel', handleWheel);
   }, [scale, translateX, translateY]);
 
-  /* ---------- панорамирование ---------- */
+  // Панорамирование
   const handleMouseDown = (e) => {
-    // Если клик по тултипу - не начинаем панорамирование
     if (tooltipRef.current && tooltipRef.current.contains(e.target)) {
       return;
     }
@@ -149,9 +210,7 @@ const InteractiveWarehouseMap = ({ zones, robots, theme, height = 600 }) => {
     const newX = startRef.current.translateX + dx / scale;
     const newY = startRef.current.translateY + dy / scale;
 
-    const clamped = clampPan(newX, newY);
-    setTranslateX(newX);
-    setTranslateY(newY);
+    updatePanPosition(newX, newY);
   };
 
   const handleMouseUp = () => {
@@ -159,7 +218,7 @@ const InteractiveWarehouseMap = ({ zones, robots, theme, height = 600 }) => {
     if (svgRef.current) svgRef.current.style.cursor = isPanningEnabled ? 'grab' : 'default';
   };
 
-  /* ---------- тач ---------- */
+  // Тач
   const getTouchCenter = (e) => {
     const t1 = e.touches[0], t2 = e.touches[1];
     return { x: (t1.clientX + t2.clientX) / 2, y: (t1.clientY + t2.clientY) / 2 };
@@ -198,9 +257,7 @@ const InteractiveWarehouseMap = ({ zones, robots, theme, height = 600 }) => {
       const newX = startRef.current.translateX + dx / scale;
       const newY = startRef.current.translateY + dy / scale;
 
-      const clamped = clampPan(newX, newY);
-      setTranslateX(clamped.x);
-      setTranslateY(clamped.y);
+      updatePanPosition(newX, newY);
     }
   };
 
@@ -210,21 +267,61 @@ const InteractiveWarehouseMap = ({ zones, robots, theme, height = 600 }) => {
     lastTouchCenter.current = null;
   };
 
-  /* ---------- цвета ---------- */
-  const getZoneColor = (id) => {
-    const zone = zones.find((z) => z.id === id);
-    if (!zone) return '#fef3c7';
-    return zone.status === 'recent' ? '#86efac'
-         : zone.status === 'needs_check' ? '#fde047'
-         : '#fca5a5';
+  // ОБНОВЛЕНО: логика определения цвета зоны
+  const getZoneColor = (zoneId) => {
+    if (highlightedZone === zoneId) {
+      return '#ff6b6b'; // Ярко-красный для подсветки
+    }
+
+    const cell = zoneData[zoneId];
+    if (!cell) return "#e9ecef"; // нет данных — серый
+
+    const statusRaw = (cell.status || "").toString().trim().toUpperCase();
+    const scannedAt = cell.time ? new Date(cell.time) : null;
+    const now = new Date();
+
+    // Критический статус
+    if (statusRaw.includes("CRITICAL") || statusRaw.includes("CRIT")) return "#f8d7da";
+
+    // Низкий остаток
+    if (statusRaw.includes("LOW_STOCK") || statusRaw.includes("LOW")) return "#fff3cd";
+
+    // Если нет времени сканирования
+    if (!scannedAt) return "#fff3cd";
+
+    // Если сканирование старше 1 часа
+    if (now - scannedAt > 60 * 60 * 1000) return "#fff3cd";
+
+    // Все хорошо
+    return "#d4edda";
   };
+
+  // ДОБАВЛЕНО: получение названия статуса зоны
+  const getZoneStatusName = (zoneId) => {
+    const cell = zoneData[zoneId];
+    if (!cell) return "Нет данных";
+
+    const statusRaw = (cell.status || "").toString().trim().toUpperCase();
+    
+    if (statusRaw.includes("CRITICAL") || statusRaw.includes("CRIT")) return "Критические остатки";
+    if (statusRaw.includes("LOW_STOCK") || statusRaw.includes("LOW")) return "Низкий остаток";
+    
+    const scannedAt = cell.time ? new Date(cell.time) : null;
+    const now = new Date();
+    
+    if (!scannedAt) return "Требует проверки";
+    if (now - scannedAt > 60 * 60 * 1000) return "Требует проверки";
+    
+    return "Проверена недавно";
+  };
+
   const getRobotColor = (status) => {
     return status === 'active' ? '#22c55e'
          : status === 'low_battery' ? '#facc15'
          : '#ef4444';
   };
 
-  /* ---------- форматирование времени ---------- */
+  // Форматирование времени
   const formatTime = (timestamp) => {
     if (!timestamp) return 'Неизвестно';
     
@@ -242,60 +339,89 @@ const InteractiveWarehouseMap = ({ zones, robots, theme, height = 600 }) => {
     }
   };
 
-  /* ---------- клик по роботу ---------- */
+  // Клик по роботу
   const handleRobotClick = (e, robot) => {
     e.stopPropagation();
     const svg = svgRef.current;
     if (!svg) return;
 
-    // Получаем координаты робота в системе SVG (без учета трансформации)
     const col = Math.floor(robot.x / CELL_SIZE);
     const row = Math.floor(robot.y / CELL_SIZE);
     const robotX = PADDING + col * CELL_SIZE + CELL_SIZE / 2;
     const robotY = PADDING + row * CELL_SIZE + CELL_SIZE / 2;
 
-    // Вычисляем оптимальную позицию для тултипа
     const TOOLTIP_WIDTH = 240;
-    const TOOLTIP_HEIGHT = 140;
+    const TOOLTIP_HEIGHT = 180;
 
     let tooltipX = robotX + 20;
-    let tooltipY = robotY - TOOLTIP_HEIGHT - 10;
+    let tooltipY = robotY - TOOLTIP_HEIGHT - 15;
 
-    // Проверяем границы и корректируем позицию если нужно
+    // Если тултип выходит за правую границу - показываем слева от робота
     if (tooltipX + TOOLTIP_WIDTH > MAP_WIDTH) {
       tooltipX = robotX - TOOLTIP_WIDTH - 20;
     }
-    if (tooltipY < 10) {
+
+    // Если тултип выходит за верхнюю границу - показываем под роботом
+    if (tooltipY < 15) {
       tooltipY = robotY + 25;
     }
-    if (tooltipY + TOOLTIP_HEIGHT > MAP_HEIGHT) {
-      tooltipY = MAP_HEIGHT - TOOLTIP_HEIGHT - 10;
+
+    // Если тултип выходит за нижнюю границу - поднимаем выше
+    if (tooltipY + TOOLTIP_HEIGHT > MAP_HEIGHT - 15) {
+      tooltipY = MAP_HEIGHT - TOOLTIP_HEIGHT - 15;
     }
 
-    // Гарантируем, что тултип не выйдет за левую/верхнюю границу
-    tooltipX = Math.max(10, tooltipX);
-    tooltipY = Math.max(10, tooltipY);
+    // Гарантируем минимальные отступы от краев
+    tooltipX = Math.max(15, Math.min(tooltipX, MAP_WIDTH - TOOLTIP_WIDTH - 15));
+    tooltipY = Math.max(15, Math.min(tooltipY, MAP_HEIGHT - TOOLTIP_HEIGHT - 15));
 
     setTooltip({
       robot,
       svgX: tooltipX,
       svgY: tooltipY,
     });
+    setZoneTooltip(null);
   };
 
-  /* ---------- клик по тултипу ---------- */
+  // ОБНОВЛЕНО: обработчик наведения на зону
+  const handleZoneMouseEnter = (e, zoneId) => {
+    const cell = zoneData[zoneId];
+    
+    const rect = e.target.getBoundingClientRect();
+    const svg = svgRef.current;
+    if (!svg) return;
+
+    const svgRect = svg.getBoundingClientRect();
+    const zoneX = rect.left - svgRect.left + rect.width / 2;
+    const zoneY = rect.top - svgRect.top;
+
+    setZoneTooltip({
+      zone: {
+        id: zoneId,
+        data: cell
+      },
+      x: zoneX,
+      y: zoneY - 10
+    });
+  };
+
+  const handleZoneMouseLeave = () => {
+    setZoneTooltip(null);
+  };
+
   const handleTooltipClick = (e) => {
     e.stopPropagation();
-    // Предотвращаем закрытие тултипа при клике на него
   };
 
-  /* ---------- предотвращение панорамирования при взаимодействии с тултипом ---------- */
   const handleTooltipMouseDown = (e) => {
     e.stopPropagation();
   };
 
   useEffect(() => {
-    const handleClickOutside = () => setTooltip(null);
+    const handleClickOutside = () => {
+      setTooltip(null);
+      setZoneTooltip(null);
+    };
     document.addEventListener('click', handleClickOutside);
     return () => document.removeEventListener('click', handleClickOutside);
   }, []);
@@ -316,15 +442,32 @@ const InteractiveWarehouseMap = ({ zones, robots, theme, height = 600 }) => {
       onTouchStart={handleTouchStart}
       onTouchMove={handleTouchMove}
       onTouchEnd={handleTouchEnd}
-      onClick={() => setTooltip(null)}
+      onClick={() => {
+        setTooltip(null);
+        setZoneTooltip(null);
+      }}
     >
+      {/* Индикатор загрузки */}
+      {loading && (
+        <text
+          x={MAP_WIDTH / 2}
+          y={MAP_HEIGHT / 2}
+          textAnchor="middle"
+          fontSize="16"
+          fill={theme === 'dark' ? '#9ca3af' : '#4b5563'}
+        >
+          Загрузка данных карты...
+        </text>
+      )}
+
       <g ref={viewportRef}>
-        {/* зоны, подписи, роботы */}
+        {/* зоны с цветовой индикацией */}
         {Array.from({ length: COLS }, (_, col) =>
           Array.from({ length: ROWS }, (_, row) => {
             const id = `${String.fromCharCode(65 + col)}${row + 1}`;
             const x = PADDING + col * CELL_SIZE;
             const y = PADDING + row * CELL_SIZE;
+            
             return (
               <rect
                 key={id}
@@ -335,6 +478,9 @@ const InteractiveWarehouseMap = ({ zones, robots, theme, height = 600 }) => {
                 fill={getZoneColor(id)}
                 stroke={theme === 'dark' ? '#4b5563' : '#d1d5db'}
                 strokeWidth="0.5"
+                onMouseEnter={(e) => handleZoneMouseEnter(e, id)}
+                onMouseLeave={handleZoneMouseLeave}
+                style={{ cursor: 'pointer' }}
               />
             );
           })
@@ -406,58 +552,65 @@ const InteractiveWarehouseMap = ({ zones, robots, theme, height = 600 }) => {
         })}
       </g>
 
-      {/* панель управления */}
-      <foreignObject x={MAP_WIDTH - 180} y="12" width="170" height="50">
-        <div className="flex gap-2 bg-white dark:bg-gray-900 p-2 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700">
-          <button
-            onClick={() => {
-              const svg = svgRef.current;
-              if (!svg) return;
-              const rect = svg.getBoundingClientRect();
-              applyZoom(1.25, rect.left + rect.width / 2, rect.top + rect.height / 2);
-            }}
-            className="w-8 h-8 flex items-center justify-center bg-blue-600 hover:bg-blue-700 text-white rounded transition text-lg font-bold"
-            title="Приблизить"
-          >
-            +
-          </button>
-          <button
-            onClick={() => {
-              if (scale <= 1.0) return;
-              const svg = svgRef.current;
-              if (!svg) return;
-              const rect = svg.getBoundingClientRect();
-              applyZoom(0.8, rect.left + rect.width / 2, rect.top + rect.height / 2);
-            }}
-            className={`w-8 h-8 flex items-center justify-center rounded transition text-lg font-bold ${
-              scale <= 1.0 
-                ? 'bg-gray-400 text-gray-600 cursor-not-allowed' 
-                : 'bg-blue-600 hover:bg-blue-700 text-white'
+      {/* Тултип для зоны */}
+      {zoneTooltip && (
+        <foreignObject 
+          x={zoneTooltip.x}
+          y={zoneTooltip.y}
+          width="220"
+          height="140"
+          style={{ 
+            pointerEvents: 'none',
+          }}
+        >
+          <div
+            className={`p-3 rounded-lg shadow-lg border ${
+              theme === 'dark'
+                ? 'bg-gray-800 border-gray-700 text-gray-100'
+                : 'bg-white border-gray-300 text-gray-900'
             }`}
-            title="Отдалить"
           >
-            −
-          </button>
-          <button
-            onClick={() => {
-              const svg = svgRef.current;
-              if (!svg) return;
-              
-              const rect = svg.getBoundingClientRect();
-              setScale(1);
-              setTranslateX(0);
-              setTranslateY(0);
-              setIsPanningEnabled(false);
-            }}
-            className="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition"
-            title="Сброс"
-          >
-            Сброс
-          </button>
-        </div>
-      </foreignObject>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="font-bold text-sm">Зона:</span>
+              <span className="text-sm font-mono">{zoneTooltip.zone.id}</span>
+            </div>
+            <div className="flex items-center gap-2 mb-2">
+              <span className="font-bold text-sm"> Статус:</span>
+              <span className={`px-2 py-1 rounded text-xs font-medium ${
+                getZoneStatusName(zoneTooltip.zone.id) === "Критические остатки"
+                  ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
+                  : getZoneStatusName(zoneTooltip.zone.id) === "Низкий остаток" || 
+                    getZoneStatusName(zoneTooltip.zone.id) === "Требует проверки"
+                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
+                  : 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
+              }`}>
+                {getZoneStatusName(zoneTooltip.zone.id)}
+              </span>
+            </div>
+            {zoneTooltip.zone.data && (
+              <>
+                {zoneTooltip.zone.data.product && (
+                  <div className="text-xs mb-1">
+                    <span className="font-medium">Товар:</span> {zoneTooltip.zone.data.product}
+                  </div>
+                )}
+                {zoneTooltip.zone.data.quantity != null && (
+                  <div className="text-xs mb-1">
+                    <span className="font-medium">Количество:</span> {zoneTooltip.zone.data.quantity}
+                  </div>
+                )}
+                {zoneTooltip.zone.data.time && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                     {formatTime(zoneTooltip.zone.data.time)}
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </foreignObject>
+      )}
 
-      {/* тултип - вне трансформации чтобы был всегда виден полностью */}
+      {/* Тултип для робота */}
       {tooltip && (
         <g 
           onClick={handleTooltipClick}
@@ -468,7 +621,7 @@ const InteractiveWarehouseMap = ({ zones, robots, theme, height = 600 }) => {
             x={tooltip.svgX}
             y={tooltip.svgY}
             width="240"
-            height="170"
+            height="180"
             style={{ 
               pointerEvents: 'all',
               userSelect: 'text',
@@ -486,12 +639,12 @@ const InteractiveWarehouseMap = ({ zones, robots, theme, height = 600 }) => {
               } transition-colors duration-200 select-text`}
               style={{ 
                 width: '232px',
-                minHeight: '132px',
+                minHeight: '152px',
                 boxSizing: 'border-box'
               }}
             >
               <div className="flex items-center gap-2 mb-2">
-                <span className="font-bold text-sm">Робот ID:</span>
+                <span className="font-bold text-sm"> Робот ID:</span>
                 <span className="text-sm font-mono select-text">{tooltip.robot.id}</span>
               </div>
               
@@ -509,8 +662,8 @@ const InteractiveWarehouseMap = ({ zones, robots, theme, height = 600 }) => {
                 </span>
               </div>
               
-              <div className="flex items-center gap-2 mb-2">
-                <span className="font-bold text-sm">Батарея:</span>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="font-bold text-sm"> Батарея:</span>
                 <span className="text-sm select-text">{tooltip.robot.battery}%</span>
                 <div className="w-16 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                   <div 
@@ -523,18 +676,17 @@ const InteractiveWarehouseMap = ({ zones, robots, theme, height = 600 }) => {
                 </div>
               </div>
               
-              <div className="flex items-center gap-2 mb-2">
-                <span className="font-bold text-sm">Позиция:</span>
+              <div className="flex items-center gap-2 mb-3">
+                <span className="font-bold text-sm"> Позиция:</span>
                 <span className="text-sm font-mono select-text">
                   {String.fromCharCode(65 + Math.floor(tooltip.robot.x / CELL_SIZE))}
                   {Math.floor(tooltip.robot.y / CELL_SIZE) + 1}
                 </span>
               </div>
               
-              <div className="text-xs text-gray-500 dark:text-gray-400 mt-3 select-text">
-                Обновлено: {tooltip.robot.lastUpdate}
+              <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 select-text">
+                 Обновлено: {tooltip.robot.lastUpdate}
               </div>
-
             </div>
           </foreignObject>
         </g>
