@@ -10,7 +10,7 @@ export default function FiltersPanel({
   handleQuickPeriod,
   resetFilters,
   hasActiveFilters,
-  applyFilters // ← ДОБАВЛЕНО: обработчик для кнопки "Применить"
+  applyFilters
 }) {
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-4 mb-6">
@@ -77,9 +77,8 @@ export default function FiltersPanel({
         <div>
           <label className="block text-sm text-gray-600 dark:text-gray-300">Статус</label>
           <select
-            value={filters.status?.[0] || ''} // Берем первый элемент массива
+            value={filters.status?.[0] || ''}
             onChange={e => {
-              // ИСПРАВЛЕНИЕ: правильно обрабатываем изменение статуса
               const selectedStatus = e.target.value;
               const newStatus = selectedStatus ? [selectedStatus] : [];
               handleFilterChange({ status: newStatus });
@@ -107,7 +106,7 @@ export default function FiltersPanel({
         </div>
         <div className="flex space-x-2 items-end col-span-1 sm:col-span-1">
           <button
-            onClick={applyFilters} // ← ИСПРАВЛЕНО: теперь вызывает applyFilters
+            onClick={applyFilters}
             disabled={loading}
             className="bg-blue-600 dark:bg-blue-700 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 disabled:opacity-50 flex-1 sm:flex-none"
           >

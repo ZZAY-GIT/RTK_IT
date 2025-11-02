@@ -160,8 +160,13 @@ class RobotEmulator:
         print(f" Робот {self.robot_id} запущен!")
 
         while True:
-            self.send_data()
-            self.move_to_next_location()
+            is_charging = self.handle_charging()
+            if not is_charging:
+                self.send_data()
+                self.move_to_next_location()
+
+            else:
+                print(f"{self.robot_id} charging...{self.battery:.1f}%")
             time.sleep(10)  # Отправка каждые 10 секунд
 
 def generate_random_robot_id():

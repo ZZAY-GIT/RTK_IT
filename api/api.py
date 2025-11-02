@@ -222,7 +222,8 @@ def get_inventory_history(
     from_date: Optional[str] = None,
     to_date: Optional[str] = None, 
     zone: Optional[str] = None,
-    status: Optional[str] = None):
+    status: Optional[str] = None,
+    product_id: Optional[str] = None):
     from_dt = datetime.fromisoformat(from_date) if from_date else None
     to_dt = datetime.fromisoformat(to_date) if to_date else None
     
@@ -230,7 +231,8 @@ def get_inventory_history(
         from_date=from_dt, 
         to_date=to_dt, 
         zone=zone, 
-        status=status
+        status=status,
+        product_id=product_id
     )
     
     return {

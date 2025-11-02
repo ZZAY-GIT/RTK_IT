@@ -21,7 +21,6 @@ export default function ActivityChartCanvas({ activityHistory, theme, robots }) 
     }
 
     const isDark = theme === 'dark';
-    const isMobile = window.innerWidth < 640;
 
     const borderColor = isDark ? 'rgba(147, 197, 253, 1)' : 'rgba(59, 130, 246, 1)';
     const bgColor = isDark ? 'rgba(147, 197, 253, 0.2)' : 'rgba(59, 130, 246, 0.2)';
@@ -49,22 +48,16 @@ export default function ActivityChartCanvas({ activityHistory, theme, robots }) 
           tension: 0.4,
           pointBackgroundColor: borderColor,
           pointBorderColor: '#fff',
-          pointBorderWidth: isMobile ? 1 : 2,
-          pointRadius: isMobile ? 2 : 4,
-          pointHoverRadius: isMobile ? 4 : 6,
+          pointBorderWidth: 2,
+          pointRadius: 4,
+          pointHoverRadius: 6,
         }]
       },
       options: {
         responsive: true,
         maintainAspectRatio: false,
         layout: {
-          padding: isMobile ? 10 : { bottom: 30, left: 10, right: 10, top: 10 }
-        },
-
-        elements: {
-          point: {
-            radius: isMobile ? 2 : 4
-          }
+          padding: { bottom: 30, left: 10, right: 10, top: 10 }
         },
 
         plugins: {
@@ -73,7 +66,7 @@ export default function ActivityChartCanvas({ activityHistory, theme, robots }) 
             labels: { 
               color: textColor, 
               usePointStyle: true, 
-              font: { size: isMobile ? 10 : 12 }
+              font: { size: 12 }
             }
           },
           tooltip: {
@@ -82,7 +75,7 @@ export default function ActivityChartCanvas({ activityHistory, theme, robots }) 
             bodyColor: textColor,
             borderColor: gridColor,
             borderWidth: 1,
-            padding: isMobile ? 6 : 10,
+            padding: 10,
             cornerRadius: 6,
             callbacks: {
               label: (ctx) => `Активных роботов: ${ctx.parsed.y}`
@@ -93,7 +86,7 @@ export default function ActivityChartCanvas({ activityHistory, theme, robots }) 
         scales: {
           x: {
             title: { 
-              display: !isMobile,
+              display: true,
               text: 'Время',
               color: textColor,
               font: { size: 12 }
@@ -101,11 +94,8 @@ export default function ActivityChartCanvas({ activityHistory, theme, robots }) 
             ticks: {
               color: textColor,
               autoSkip: true,
-              maxTicksLimit: isMobile ? 4 : 8,
-              maxRotation: isMobile ? 0 : 45,
-              callback: function(value, index) {
-                return index % (isMobile ? 3 : 2) === 0 ? this.getLabelForValue(value) : '';
-              }
+              maxTicksLimit: 8,
+              maxRotation: 45,
             },
             grid: { color: gridColor }
           },
@@ -114,7 +104,7 @@ export default function ActivityChartCanvas({ activityHistory, theme, robots }) 
             beginAtZero: true,
             max: Math.max(robots.length, 1),
             title: { 
-              display: !isMobile,
+              display: true,
               text: 'Количество роботов',
               color: textColor,
               font: { size: 12 }
@@ -138,22 +128,22 @@ export default function ActivityChartCanvas({ activityHistory, theme, robots }) 
   }, [theme, activityHistory, robots.length]);
 
   return (
-    <div className="mt-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 sm:p-4">
-      <h3 className="text-lg sm:text-md font-semibold mb-3 text-gray-800 dark:text-gray-100">
+    <div className="mt-6 bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4">
+      <h3 className="text-lg font-semibold mb-3 text-gray-800 dark:text-gray-100">
         Активность роботов за последний час
       </h3>
 
       {activityHistory.length > 0 ? (
-        <div className="h-56 sm:h-[340px] -mx-2 sm:mx-0">
+        <div className="h-[340px]">
           <canvas id="activityChart" className="w-full h-full" />
         </div>
       ) : (
-        <div className="h-56 sm:h-[340px] flex flex-col items-center justify-center text-center text-gray-500 dark:text-gray-400 px-4">
-          <p className="text-base sm:text-sm">Сбор данных для графика...</p>
-          <p className="text-sm sm:text-xs mt-2">
+        <div className="h-[340px] flex flex-col items-center justify-center text-center text-gray-500 dark:text-gray-400 px-4">
+          <p className="text-base">Сбор данных для графика...</p>
+          <p className="text-sm mt-2">
             Первые данные появятся через 10 минут
           </p>
-          <p className="text-sm sm:text-sm mt-1">
+          <p className="text-sm mt-1">
             Текущее количество активных роботов: {robots.filter(r => r.status === 'active').length}
           </p>
         </div>

@@ -18,13 +18,22 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
     return apiData.items.map(item => ({
       id: Number(item.id),
       date: item.scanned_at ? new Date(item.scanned_at).toLocaleDateString('ru-RU') : 'N/A',
+      // ДОБАВИТЬ поле с датой и временем для отображения
+      dateTime: item.scanned_at ? new Date(item.scanned_at).toLocaleString('ru-RU', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      }) : 'N/A',
       productId: item.product_id || 'N/A',
       productName: item.product_name || `Товар ${item.product_id || 'N/A'}`,
       actualQuantity: item.quantity || 0,
       robotId: item.robot_id || 'N/A',
       zone: item.zone || 'N/A',
       shelfNumber: item.shelf_number || 'N/A',
-      status: item.status ? item.status.toLowerCase() : 'unknown',
+      status: getDisplayStatus(item.status),
+      statusDb: item.status,
       expectedQuantity: item.recommended_order || 0,
       discrepancy: item.discrepancy || 0,
       predictionConfidence: item.prediction_confidence || null,
@@ -32,9 +41,28 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
     }));
   };
 
+  // Функция для преобразования статусов БД в русские для отображения
+  const getDisplayStatus = (statusDb) => {
+    switch (statusDb) {
+      case 'OK': return 'ok';
+      case 'LOW_STOCK': return 'low';
+      case 'CRITICAL': return 'critical';
+      default: return 'unknown';
+    }
+  };
+
+  // Функция для преобразования русских статусов в статусы БД
+  const getDbStatus = (displayStatus) => {
+    switch (displayStatus) {
+      case 'ok': return 'OK';
+      case 'low': return 'LOW_STOCK';
+      case 'critical': return 'CRITICAL';
+      default: return null;
+    }
+  };
+
   const apiResponse = reduxHistoryData || {};
   
-  // ИСПРАВЛЕНИЕ: используем данные из API ответа
   const finalHistoryData = transformApiData(apiResponse);
   const finalTotalItems = apiResponse.total || finalHistoryData.length;
 
@@ -54,16 +82,25 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
 
   const prepareApiFilters = (filters) => {
     const apiFilters = {};
-    if (filters.startDate) apiFilters.from_date = filters.startDate;
-    if (filters.endDate) apiFilters.to_date = filters.endDate;
+    
+    // ИСПРАВЛЕНИЕ: для включительной фильтрации по датам
+    if (filters.startDate) {
+      // Устанавливаем начало дня для startDate
+      apiFilters.from_date = filters.startDate + 'T00:00:00';
+    }
+    if (filters.endDate) {
+      // Устанавливаем конец дня для endDate (включительно)
+      apiFilters.to_date = filters.endDate + 'T23:59:59';
+    }
+    
     if (filters.zones?.length > 0) apiFilters.zone = filters.zones[0];
     if (filters.status?.length > 0) {
-      apiFilters.status = filters.status[0]; // Берем первый статус
+      const dbStatus = getDbStatus(filters.status[0]);
+      if (dbStatus) apiFilters.status = dbStatus;
     }
-    if (filters.search) apiFilters.search = filters.search;
+    if (filters.search) apiFilters.product_id = filters.search;
     return apiFilters;
   };
-
   const loadHistoryData = async (newFilters = filters) => {
     setLoading(true);
     try {
@@ -111,18 +148,19 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
     loadHistoryData(newFilters);
   };
 
-  // ИСПРАВЛЕНИЕ: убрал автоматическое применение фильтров, так как оно конфликтует
-  // с ручным применением через кнопку "Применить"
-  // useEffect(() => {
-  //   if (filters.startDate || filters.endDate || filters.zones?.length > 0 || filters.status?.length > 0 || filters.search) {
-  //     const timer = setTimeout(applyFilters, 500);
-  //     return () => clearTimeout(timer);
-  //   }
-  // }, [filters.startDate, filters.endDate, filters.zones, filters.status, filters.search]);
-
-  const getCurrentTableItems = () => {
-    return finalHistoryData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  };
+  // Включаем автоматическое применение фильтров с debounce
+  useEffect(() => {
+    const hasFilters = filters.startDate || filters.endDate || filters.zones?.length > 0 || filters.status?.length > 0 || filters.search;
+    
+    if (hasFilters) {
+      const timer = setTimeout(() => {
+        // Проверяем, действительно ли фильтры изменились
+        applyFilters();
+      }, 500);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [filters.startDate, filters.endDate, filters.zones, filters.status, filters.search]);
 
   const selectAllTableItems = () => {
     const currentItems = getCurrentTableItems();
@@ -204,6 +242,78 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
   const hasActiveFilters = filters.startDate || filters.endDate || filters.zones?.length > 0 || filters.status?.length > 0 || filters.search;
   const hasChartData = chartSelectedItems.length > 0 && finalHistoryData.some(item => chartSelectedItems.some(s => s.productId === item.productId));
 
+  const [sortConfig, setSortConfig] = useState({
+    key: null,
+    direction: 'asc' // 'asc' | 'desc'
+  });
+
+  // Функция для сортировки данных
+  const getSortedData = (data) => {
+    if (!sortConfig.key) return data;
+
+    return [...data].sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+
+      // Для числовых значений (расхождение)
+      if (sortConfig.key === 'discrepancy') {
+        aValue = Number(aValue) || 0;
+        bValue = Number(bValue) || 0;
+      }
+      
+      // Для дат - преобразуем в timestamp для корректного сравнения
+      if (sortConfig.key === 'date') {
+        aValue = new Date(a.scanned_at || aValue).getTime();
+        bValue = new Date(b.scanned_at || bValue).getTime();
+      }
+
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  };
+
+  // Функция для обработки сортировки
+  const handleSort = (key) => {
+    setSortConfig(current => {
+      // Если кликаем по другой колонке, начинаем с возрастания
+      if (current.key !== key) {
+        return {
+          key,
+          direction: 'asc'
+        };
+      }
+      
+      // Если кликаем по той же колонке - циклически меняем состояние
+      if (current.direction === 'asc') {
+        return {
+          key,
+          direction: 'desc'
+        };
+      } else if (current.direction === 'desc') {
+        // Третий клик - сбрасываем сортировку
+        return {
+          key: null,
+          direction: 'asc'
+        };
+      }
+      
+      return current;
+    });
+  };
+
+  // Получаем отсортированные данные
+  const sortedHistoryData = getSortedData(finalHistoryData);
+
+  // Обновляем функции, чтобы использовать отсортированные данные
+  const getCurrentTableItems = () => {
+    return sortedHistoryData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  };
+
   return {
     historyItems: finalHistoryData,
     finalHistoryData,
@@ -239,13 +349,18 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
     clearChartSelection,
     exportToExcel,
     getCurrentTableItemsCount,
-    getCurrentTableItems,
     availableZones,
     totalPages,
     startItem,
     endItem,
     hasActiveFilters,
     hasChartData,
-    applyFilters // ← ДОБАВЛЕНО: возвращаем applyFilters
+    applyFilters,
+    sortedHistoryData,
+    sortConfig,
+    handleSort,
+    getCurrentTableItems, // теперь использует sortedHistoryData
+    // Обновляем finalHistoryData для графика, если нужно
+    finalHistoryData: sortedHistoryData,
   };
 }

@@ -1,7 +1,7 @@
 // src/features/admin/components/ProductsTable.js
 import { PlusIcon, PencilIcon, TrashIcon, SearchIcon } from '@heroicons/react/outline';
 export default function ProductsTable({ 
-paginatedProducts,
+  paginatedProducts,
   selectedItems,
   setSelectedItems,
   productSearch,
@@ -51,15 +51,15 @@ paginatedProducts,
             <tr className="bg-gray-100 dark:bg-gray-700">
               <th className="p-2 text-left w-8">
                 <input
-                type="checkbox"
-                checked={selectedItems.length === paginatedProducts.length && paginatedProducts.length > 0}
-                onChange={(e) => e.target.checked ? setSelectedItems(paginatedProducts) : setSelectedItems([])}
-                className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
-              />
+                  type="checkbox"
+                  checked={selectedItems.length === paginatedProducts.length && paginatedProducts.length > 0}
+                  onChange={(e) => e.target.checked ? setSelectedItems(paginatedProducts) : setSelectedItems([])}
+                  className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
+                />
               </th>
               <th className="p-2 text-left text-gray-800 dark:text-gray-100">ID</th>
               <th className="p-2 text-left text-gray-800 dark:text-gray-100">Название</th>
-              <th className="p-2 text-left text-gray-800 dark:text-gray-100">Кат.</th>
+              <th className="p-2 text-left text-gray-800 dark:text-gray-100">Категории</th>
               <th className="p-2 text-left text-gray-800 dark:text-gray-100">Мин</th>
               <th className="p-2 text-left text-gray-800 dark:text-gray-100">Опт</th>
               <th className="p-2 text-left text-gray-800 dark:text-gray-100">Действия</th>
@@ -71,10 +71,16 @@ paginatedProducts,
                 <tr key={product.id} className="border-t dark:border-gray-600">
                   <td className="p-2">
                     <input
-                        type="checkbox"
-                        checked={selectedItems.length === paginatedProducts.length && paginatedProducts.length > 0}
-                        onChange={(e) => e.target.checked ? setSelectedItems(paginatedProducts) : setSelectedItems([])}
-                        className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
+                      type="checkbox"
+                      checked={selectedItems.some(i => i.id === product.id)}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setSelectedItems([...selectedItems, product]);
+                        } else {
+                          setSelectedItems(selectedItems.filter(i => i.id !== product.id));
+                        }
+                      }}
+                      className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
                     />
                   </td>
                   <td className="p-2">{product.id}</td>
@@ -104,14 +110,12 @@ paginatedProducts,
       </div>
 
       {/* Пагинация */}
-    <div className="flex justify-between mt-4">
+      <div className="flex justify-between mt-4">
         <select
           value={pageSize}
           onChange={(e) => setPageSize(Number(e.target.value))}
           className="p-1.5 text-xs border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
         >
-            
-
           <option value={20}>20</option>
           <option value={50}>50</option>
           <option value={100}>100</option>
