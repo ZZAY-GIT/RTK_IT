@@ -59,7 +59,7 @@ export default function ProductsTable({
               </th>
               <th className="p-2 text-left text-gray-800 dark:text-gray-100">ID</th>
               <th className="p-2 text-left text-gray-800 dark:text-gray-100">Название</th>
-              <th className="p-2 text-left text-gray-800 dark:text-gray-100">Кат.</th>
+              <th className="p-2 text-left text-gray-800 dark:text-gray-100">Категории</th>
               <th className="p-2 text-left text-gray-800 dark:text-gray-100">Мин</th>
               <th className="p-2 text-left text-gray-800 dark:text-gray-100">Опт</th>
               <th className="p-2 text-left text-gray-800 dark:text-gray-100">Действия</th>
