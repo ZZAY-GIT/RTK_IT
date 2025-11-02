@@ -74,8 +74,8 @@ password: admin1234
     |   |   |-- App.js             # Основной компонент
     |   |   |-- components/        # Переиспользуемые компоненты
     |   |   |   |-- Header.js
-    |   |   |   |-- InteractiveWarehouseMap.jsx
-    |   |   |   |-- NotificationsPanel.jsx
+    |   |   |   |-- InteractiveWarehouseMap.js
+    |   |   |   |-- NotificationsPanel.js
     |   |   |   |-- MapControls.jsx
     |   |   |-- features/          # Функциональные модули
     |   |   |   |-- dashboard/     # Панель мониторинга
@@ -87,7 +87,11 @@ password: admin1234
     |   |   |   |-- useAuth.js
     |   |   |-- store/             # Redux store
     |   |   |   |-- warehouseSlice.js
-    |   |   |-- pages/             # Страницы приложения
+    |   |   |-- pages/
+    |   |   |-- auth/
+    |   |       |--components/
+    |   |          |--ForgotPassword.js
+    |   |          |-- Login.js 
     |   |-- public/                # Статические файлы
     |   |-- package.json           # Зависимости Node.js
     |
@@ -203,6 +207,14 @@ password: password
 ### Управление пользователями
 
 - добавить пользователя или удалить
+
+## Страница /login
+
+- страница для входа
+
+## Страница /forgot-password
+
+- страница забыли пароль
 
 ## Пользовательский интерфейс
 
