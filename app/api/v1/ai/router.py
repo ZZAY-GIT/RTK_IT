@@ -1,7 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, HTTPException
 from app.api.v1.schemas import PredictRequest, PredictResponse
-from app.api.v1.ai.yandex_gpt_client import yandex_client
-from app.dependencies import access_level
+from app.core.ai.yandex_gpt_client import yandex_client
 from app.db.DataBaseManager import db
 from fastapi_cache.decorator import cache
 import logging
@@ -13,21 +12,33 @@ router = APIRouter()
 @router.get("/predict", response_model=PredictResponse)
 @cache(expire=7200)
 async def get_predict():
+    # 1. Получаем данные для AI из нашей БД
     inventory_data, historical_data = await db.get_data_for_predict()
-    predictions_from_ai = yandex_client.get_prediction(inventory_data, historical_data)
-    if predictions_from_ai is None:
+    
+    # 2. Вызываем метод клиента, который вернет нам словарь с данными
+    request_data = yandex_client.get_prediction(inventory_data, historical_data)
+    
+    # 3. Проверяем, смог ли клиент получить и распарсить данные
+    if request_data is None:
         raise HTTPException(
             status_code=503, 
             detail="AI service is currently unavailable or returned an error."
         )
-    return PredictResponse(predictions=predictions_from_ai, confidence=0.75)
+    
+    # 4. Извлекаем список предсказаний из словаря
+    predictions_list = request_data.get("categories")
+    if not predictions_list:
+        raise HTTPException(
+            status_code=503, 
+            detail="AI service returned no predictions."
+        )
 
-
-@router.post("/predict/post", response_model=PredictResponse)
-def predict(request: PredictRequest):
-    predictions_list = request.categories
-    saved_predictions = db.add_ai_prediction(predictions_list)
+    # 5. Сохраняем список предсказаний в базу данных
+    saved_predictions = await db.add_ai_prediction(predictions_list)
+    
+    # 6. Проверяем, успешно ли прошла запись в БД
     if saved_predictions is None:
-        # Если БД вернула ошибку, возвращаем серверную ошибку
         raise HTTPException(status_code=500, detail="Failed to save AI predictions to the database")
+    
+    # 7. Возвращаем ответ, содержащий данные, которые были сохранены в БД
     return PredictResponse(predictions=saved_predictions, confidence=0.75)
