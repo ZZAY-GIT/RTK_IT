@@ -1,5 +1,5 @@
-<div style="text-align: center; margin-bottom: 32px;">
-  <img src="https://avatars.mds.yandex.net/get-entity_search/9707406/687403000/S600xU" alt="Умный склад — Система мониторинга" style="max-width: 100%; border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.15);">
+<div align="center">
+  <img src="https://static.tildacdn.com/tild3836-3064-4332-a463-626566613064/Frame_15.svg" alt="Умный склад — Система мониторинга" style="max-width: 100%; border-radius: 12px;">
 </div>
 
 # Умный склад — Система мониторинга  
@@ -9,23 +9,9 @@
 
 ## 👥 **Состав команды**  
 
-<div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; margin: 24px 0;">
-  <div style="background: #e3f2fd; padding: 16px; border-radius: 12px; text-align: center; border-left: 4px solid #1976d2; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
-    <strong style="color: #1565c0;">Амплеенков Даниил</strong>
-  </div>
-  <div style="background: #e8f5e9; padding: 16px; border-radius: 12px; text-align: center; border-left: 4px solid #388e3c; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
-    <strong style="color: #2e7d32;">Горячко Дарья</strong>
-  </div>
-  <div style="background: #fff3e0; padding: 16px; border-radius: 12px; text-align: center; border-left: 4px solid #f57c00; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
-    <strong style="color: #ef6c00;">Жуков Марк</strong>
-  </div>
-  <div style="background: #f3e5f5; padding: 16px; border-radius: 12px; text-align: center; border-left: 4px solid #7b1fa2; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
-    <strong style="color: #6a1b9a;">Иванов Кирилл</strong>
-  </div>
-  <div style="background: #e0f2f1; padding: 16px; border-radius: 12px; text-align: center; border-left: 4px solid #00695c; box-shadow: 0 4px 10px rgba(0,0,0,0.05);">
-    <strong style="color: #00695c;">Якупов Марат</strong>
-  </div>
-</div>
+| Амплеенков Даниил | Горячко Дарья | Жуков Марк | Иванов Кирилл | Якупов Марат |
+|-------------------|---------------|------------|---------------|--------------|
+
 
 ---
 
@@ -37,7 +23,7 @@ docker-compose up -d
 ```
 
 > **Сервер доступен по адресу:**  
-> 🌐 [`http://localhost:3000`](http://localhost:3000)
+> 🌐 [http://localhost:3000](http://localhost:3000)
 
 ### 🔐 **Данные для входа** *(можно изменить в `.env`)*  
 ```
@@ -86,20 +72,18 @@ Heroicons          – иконки
 
 ## **/dashboard**  
 ### **Мониторинг в реальном времени**  
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 16px 0;">
-  <div style="background: #f0f7ff; padding: 12px; border-radius: 8px; border-left: 4px solid #2196F3;">
-    <strong>Интерактивная SVG-карта</strong><br>
-    <small>26×50 зон | Масштабирование + панорамирование</small>
-  </div>
-  <div style="background: #e8f5e9; padding: 12px; border-radius: 8px; border-left: 4px solid #4CAF50;">
-    <strong>Отслеживание роботов</strong><br>
-    <small>Позиция и статус в реальном времени</small>
-  </div>
-  <div style="background: #fff3e0; padding: 12px; border-radius: 8px; border-left: 4px solid #FF9800;">
-    <strong>Цветовая индикация</strong><br>
-    <small>Зоны и роботы: норма / предупреждение / критично</small>
-  </div>
-</div>
+
+- **Интерактивная SVG-карта**  
+  26×50 зон | Масштабирование + панорамирование  
+  <details><summary>Подробнее</summary>Карта склада с динамическим отображением зон и роботов в реальном времени.</details>
+
+- **Отслеживание роботов**  
+  Позиция и статус в реальном времени  
+  <details><summary>Подробнее</summary>Роботы отображаются с иконками и статусами: активен, в пути, зарядка, ошибка.</details>
+
+- **Цветовая индикация**  
+  Зоны и роботы: норма / предупреждение / критично  
+  <details><summary>Подробнее</summary>Зелёный — норма, жёлтый — предупреждение, красный — критично.</details>
 
 ### **Умная система уведомлений**  
 - **Автообнаружение** критических остатков  
@@ -118,7 +102,7 @@ Heroicons          – иконки
 
 ## **/history**  
 ### **Фильтры**  
-```text
+```
 По дате • По зоне • По статусу • По артикулу
 ```
 
@@ -133,20 +117,18 @@ Heroicons          – иконки
 ---
 
 ## **/admin** *(только admin/operator)*  
-<div style="display: flex; flex-wrap: wrap; gap: 16px; margin: 16px 0;">
-  <div style="flex: 1; min-width: 200px; background: #f9f0ff; padding: 16px; border-radius: 10px; border: 1px solid #e0c3fc;">
-    <strong>Управление товарами</strong><br>
-    <small>+ Добавить товар<br>− Удалить товар</small>
-  </div>
-  <div style="flex: 1; min-width: 200px; background: #e8f5e9; padding: 16px; border-radius: 10px; border: 1px solid #c8e6c9;">
-    <strong>Управление роботами</strong><br>
-    <small>+ Добавить робота<br>− Удалить робота</small>
-  </div>
-  <div style="flex: 1; min-width: 200px; background: #fff8e1; padding: 16px; border-radius: 10px; border: 1px solid #ffe082;">
-    <strong>Управление пользователями</strong><br>
-    <small>+ Добавить пользователя<br>− Удалить пользователя</small>
-  </div>
-</div>
+
+### Управление товарами  
+➕ Добавить товар  
+➖ Удалить товар  
+
+### Управление роботами  
+➕ Добавить робота  
+➖ Удалить робота  
+
+### Управление пользователями  
+➕ Добавить пользователя  
+ ➖ Удалить пользователя  
 
 ---
 
@@ -157,13 +139,8 @@ Heroicons          – иконки
 ---
 
 ## **Пользовательский интерфейс**  
-```css
-Адаптивный • Mobile-first
-Темная / Светлая тема
-Material Design 3
-Интуитивная навигация
-```
+- Адаптивный • Mobile-first  
+- Темная / Светлая тема  
+- Material Design 3  
+- Интуитивная навигация  
 
-<div style="text-align: center; margin: 32px 0; font-style: italic; color: #666;">
-  Современный склад — под полным контролем.
-</div>
