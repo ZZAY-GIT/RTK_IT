@@ -26,16 +26,18 @@ const InteractiveWarehouseMap = ({
 
   const { scale, translateX, translateY, isPanningEnabled } = mapControls;
 
-  const CELL_SIZE = 20;
-  const COLS = 26;
-  const ROWS = 50;
-  const PADDING = 40;
-  const MAP_WIDTH = COLS * CELL_SIZE + 2 * PADDING;
-  const MAP_HEIGHT = ROWS * CELL_SIZE + 2 * PADDING;
+  // СТАЛО:
+const CELL_SIZE = 20;
+const COLS = 26;
+const ROWS = 50;
+const PADDING = 40;
+const MAP_WIDTH = COLS * CELL_SIZE + 2 * PADDING;
+const MAP_HEIGHT = ROWS * CELL_SIZE + 2 * PADDING;
 
-  // Размеры только контента, без отступов
-  const CONTENT_WIDTH = COLS * CELL_SIZE;
-  const CONTENT_HEIGHT = ROWS * CELL_SIZE;
+// УБИРАЕМ ненужные константы для ограничений
+// Размеры только контента, без отступов
+// const CONTENT_WIDTH = COLS * CELL_SIZE;
+// const CONTENT_HEIGHT = ROWS * CELL_SIZE;
 
   // ОБНОВЛЕНО: используем recentScans для формирования данных зон
   useEffect(() => {
@@ -113,83 +115,100 @@ const InteractiveWarehouseMap = ({
 }, [recentScans]);
 
   // Применяем трансформацию при изменении контролов
-  useEffect(() => {
-    if (viewportRef.current) {
-      viewportRef.current.setAttribute(
-        'transform',
-        `translate(${translateX},${translateY}) scale(${scale})`
-      );
-    }
-  }, [scale, translateX, translateY]);
+// СТАЛО:
+useEffect(() => {
+  if (viewportRef.current) {
+    viewportRef.current.setAttribute(
+      'transform',
+      `translate(${translateX},${translateY}) scale(${scale})`
+    );
+  }
+}, [scale, translateX, translateY]);
 
   // Ограничение панорамирования
-  const clampPan = useCallback((x, y) => {
-    const svg = svgRef.current;
-    if (!svg) return { x, y };
+  // const clampPan = useCallback((x, y) => {
+  //   const svg = svgRef.current;
+  //   if (!svg) return { x, y };
 
-    const rect = svg.getBoundingClientRect();
+  //   const rect = svg.getBoundingClientRect();
 
-    const minTranslateX = rect.width / scale - (PADDING + CONTENT_WIDTH);
-    const minTranslateY = rect.height / scale - (PADDING + CONTENT_HEIGHT);
+  //   const minTranslateX = rect.width / scale - (PADDING + CONTENT_WIDTH);
+  //   const minTranslateY = rect.height / scale - (PADDING + CONTENT_HEIGHT);
 
-    const maxTranslateX = PADDING;
-    const maxTranslateY = PADDING;
+  //   const maxTranslateX = PADDING;
+  //   const maxTranslateY = PADDING;
 
-    const finalMinX = Math.min(minTranslateX, maxTranslateX);
-    const finalMinY = Math.min(minTranslateY, maxTranslateY);
+  //   const finalMinX = Math.min(minTranslateX, maxTranslateX);
+  //   const finalMinY = Math.min(minTranslateY, maxTranslateY);
 
-    return {
-      x: Math.min(Math.max(x, finalMinX), maxTranslateX),
-      y: Math.min(Math.max(y, finalMinY), maxTranslateY),
-    };
-  }, [scale]);
+  //   return {
+  //     x: Math.min(Math.max(x, finalMinX), maxTranslateX),
+  //     y: Math.min(Math.max(y, finalMinY), maxTranslateY),
+  //   };
+  // }, [scale]);
 
   // Обновляем панорамирование через callback
-  const updatePanPosition = useCallback((newX, newY) => {
-    if (onMapControlsChange) {
-      const clamped = clampPan(newX, newY);
-      onMapControlsChange(clamped.x, clamped.y);
-    }
-  }, [onMapControlsChange, clampPan]);
+// СТАЛО:
+// СТАЛО:
+const updatePanPosition = useCallback((newX, newY) => {
+  if (onMapControlsChange) {
+    // ПЕРЕДАЕМ ТОЛЬКО КООРДИНАТЫ
+    onMapControlsChange(newX, newY);
+  }
+}, [onMapControlsChange]);
 
   // Зум
-  const applyZoom = (delta, clientX, clientY) => {
-    const svg = svgRef.current;
-    if (!svg) return;
+  // СТАЛО:
+// ДОБАВЛЯЕМ useCallback для applyZoom чтобы избежать проблем с зависимостями
+// СТАЛО:
+// СТАЛО:
+const applyZoom = useCallback((delta, clientX, clientY) => {
+  const svg = svgRef.current;
+  if (!svg) return;
 
-    const oldScale = scale;
-    const newScale = Math.min(Math.max(oldScale * delta, 1.0), 5);
+  const oldScale = scale;
+  
+  // ПРОСТЫЕ ОГРАНИЧЕНИЯ МАСШТАБА
+  let newScale = oldScale * delta;
+  newScale = Math.max(0.1, Math.min(newScale, 10));
 
-    if (delta < 1 && oldScale <= 1.0) return;
-    if (newScale === oldScale) return;
+  // Если масштаб не изменился - выходим
+  if (Math.abs(newScale - oldScale) < 0.001) return;
 
-    const rect = svg.getBoundingClientRect();
-    const mx = clientX - rect.left;
-    const my = clientY - rect.top;
+  // УПРОЩЕННЫЙ РАСЧЕТ - используем простую математику
+  const rect = svg.getBoundingClientRect();
+  const mx = clientX - rect.left;
+  const my = clientY - rect.top;
 
-    const newTranslateX = translateX + mx * (1 / newScale - 1 / oldScale);
-    const newTranslateY = translateY + my * (1 / newScale - 1 / oldScale);
+  const newTranslateX = translateX + mx * (1 / newScale - 1 / oldScale);
+  const newTranslateY = translateY + my * (1 / newScale - 1 / oldScale);
 
-    updatePanPosition(newTranslateX, newTranslateY);
-  };
+  // Обновляем состояние
+  if (onMapControlsChange) {
+    onMapControlsChange(newTranslateX, newTranslateY, newScale);
+  }
+}, [scale, translateX, translateY, onMapControlsChange]);
 
   // Wheel с предотвращением скролла страницы
-  useEffect(() => {
-    const svg = svgRef.current;
-    if (!svg) return;
+  // СТАЛО:
+useEffect(() => {
+  const svg = svgRef.current;
+  if (!svg) return;
 
-    const handleWheel = (e) => {
-      if (tooltipRef.current && tooltipRef.current.contains(e.target)) {
-        return;
-      }
-      e.preventDefault();
-      const delta = e.deltaY > 0 ? 0.9 : 1.1;
-      applyZoom(delta, e.clientX, e.clientY);
-    };
+  const handleWheel = (e) => {
+    if (tooltipRef.current && tooltipRef.current.contains(e.target)) {
+      return;
+    }
+    e.preventDefault();
+    
+    // ПРОСТАЯ И ПОНЯТНАЯ ЛОГИКА ЗУМА
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    applyZoom(delta, e.clientX, e.clientY);
+  };
 
-    svg.addEventListener('wheel', handleWheel, { passive: false });
-    return () => svg.removeEventListener('wheel', handleWheel);
-  }, [scale, translateX, translateY]);
+  svg.addEventListener('wheel', handleWheel, { passive: false });
+  return () => svg.removeEventListener('wheel', handleWheel);
+}, [applyZoom]);
 
   // Панорамирование
   const handleMouseDown = (e) => {
@@ -225,41 +244,55 @@ const InteractiveWarehouseMap = ({
   };
 
   const handleTouchStart = (e) => {
-    if (e.touches.length === 2) {
-      e.preventDefault();
-      const center = getTouchCenter(e);
-      lastTouchDist.current = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      lastTouchCenter.current = center;
-    } else if (e.touches.length === 1) {
-      startRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, translateX, translateY };
-    }
-  };
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    const center = getTouchCenter(e);
+    lastTouchDist.current = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    lastTouchCenter.current = center;
+    
+    // Останавливаем панорамирование при начале зума
+    startRef.current = null;
+  } else if (e.touches.length === 1) {
+    startRef.current = { 
+      x: e.touches[0].clientX, 
+      y: e.touches[0].clientY, 
+      translateX, 
+      translateY 
+    };
+  }
+};
 
-  const handleTouchMove = (e) => {
-    if (e.touches.length === 2 && lastTouchCenter.current) {
-      e.preventDefault();
-      const center = getTouchCenter(e);
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
+ // СТАЛО:
+const handleTouchMove = (e) => {
+  if (e.touches.length === 2 && lastTouchCenter.current) {
+    e.preventDefault();
+    const center = getTouchCenter(e);
+    const dist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    
+    // УЛУЧШАЕМ логику зума для тач-устройств
+    if (lastTouchDist.current > 0) {
       const delta = dist / lastTouchDist.current;
       applyZoom(delta, center.x, center.y);
-      lastTouchDist.current = dist;
-      lastTouchCenter.current = center;
-    } else if (e.touches.length === 1 && startRef.current) {
-      const dx = e.touches[0].clientX - startRef.current.x;
-      const dy = e.touches[0].clientY - startRef.current.y;
-
-      const newX = startRef.current.translateX + dx / scale;
-      const newY = startRef.current.translateY + dy / scale;
-
-      updatePanPosition(newX, newY);
     }
-  };
+    
+    lastTouchDist.current = dist;
+    lastTouchCenter.current = center;
+  } else if (e.touches.length === 1 && startRef.current) {
+    const dx = e.touches[0].clientX - startRef.current.x;
+    const dy = e.touches[0].clientY - startRef.current.y;
+
+    const newX = startRef.current.translateX + dx / scale;
+    const newY = startRef.current.translateY + dy / scale;
+
+    updatePanPosition(newX, newY);
+  }
+};
 
   const handleTouchEnd = () => {
     startRef.current = null;

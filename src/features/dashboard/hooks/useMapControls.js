@@ -41,13 +41,36 @@ export const useMapControls = (initialScale = 1) => {
     });
   }, []);
 
-  const updatePan = useCallback((translateX, translateY) => {
+  // СТАЛО в useMapControls.js:
+// СТАЛО:
+const updatePan = useCallback((...args) => {
+  // ПОДДЕРЖИВАЕМ РАЗНЫЕ ФОРМАТЫ ВЫЗОВА:
+  if (args.length === 1 && typeof args[0] === 'object') {
+    // Формат: updatePan({ translateX, translateY, scale })
+    const newControls = args[0];
+    setMapControls(prev => ({
+      ...prev,
+      ...newControls
+    }));
+  } else if (args.length === 2) {
+    // Формат: updatePan(x, y)
+    const [translateX, translateY] = args;
     setMapControls(prev => ({
       ...prev,
       translateX,
       translateY
     }));
-  }, []);
+  } else if (args.length === 3) {
+    // Формат: updatePan(x, y, scale)
+    const [translateX, translateY, scale] = args;
+    setMapControls(prev => ({
+      ...prev,
+      translateX,
+      translateY,
+      scale
+    }));
+  }
+}, []);
 
   return {
     mapControls,
