@@ -1,32 +1,25 @@
 FROM python:3.12-slim
 
+
 WORKDIR /app
 
-COPY pyproject.toml ./
+
+RUN pip install poetry
+
+ENV POETRY_VIRTUALENVS_CREATE=false
+ENV POETRY_NO_INTERACTION=1
+
+COPY pyproject.toml poetry.lock* ./
+
+RUN poetry install --no-root
+
+
 COPY backend/ ./backend/
+COPY README.md ./
 
-RUN pip install --no-cache-dir \
-    fastapi==0.119.1 \
-    uvicorn[standard]==0.38.0 \
-    sqlalchemy==2.0.44 \
-    pydantic[email]==2.12.3 \
-    pydantic-settings==2.11.0 \
-    passlib[bcrypt]==1.7.4 \
-    pyjwt==2.10.1 \
-    python-multipart==0.0.20 \
-    httpx==0.28.1 \
-    pandas==2.3.3 \
-    websockets==15.0.1 \
-    redis==7.0.1 \
-    fastapi-cache2==0.2.2 \
-    tiktoken==0.12.0 \
-    asyncpg==0.30.0 \
-    requests==2.32.5 \
-    bcrypt==5.0.0 \
-    psycopg2-binary==2.9.9
 
-ENV PYTHONPATH=/backend
+ENV PYTHONPATH=/app
 
 EXPOSE 8000
 
-CMD ["uvicorn", "backend.app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "backend/run.py"]
