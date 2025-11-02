@@ -36,6 +36,45 @@ class DataBaseManager:
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
 
+    async def init_default_user(self):
+        """
+        Проверяет, существует ли пользователь с email из настроек.
+        Если нет - создает его с ролью администратора.
+        """
+        default_email = settings.DEFAULT_ADMIN_EMAIL
+        default_password = settings.DEFAULT_ADMIN_PASSWORD
+
+        # Проверяем, заданы ли настройки
+        if not default_email or not default_password:
+            logging.warning(
+                "DEFAULT_ADMIN_EMAIL или DEFAULT_ADMIN_PASSWORD не заданы. "
+                "Пропуск создания пользователя по умолчанию."
+            )
+            return
+
+        logging.info(f"Проверка существования пользователя с email: {default_email}")
+        
+        # Используем существующий метод для проверки пользователя
+        existing_user = await self.get_user(default_email)
+
+        if existing_user:
+            logging.info(f"Пользователь с email {default_email} уже существует.")
+        else:
+            logging.info(f"Пользователь с email {default_email} не найден. Создание...")
+            
+            # Используем существующий метод для добавления пользователя
+            admin_user = await self.add_user(
+                email=default_email,
+                password=default_password,
+                name="Default Admin",
+                role="operator"
+            )
+
+            if admin_user:
+                logging.info(f"✅ Администратор по умолчанию успешно создан: {admin_user.email}")
+            else:
+                logging.error(f"❌ Не удалось создать администратора по умолчанию.")
+
     # Методы User
     async def add_user(self, email: str, password: str, name: str, role: str):
         password_hash = hash_password(password)

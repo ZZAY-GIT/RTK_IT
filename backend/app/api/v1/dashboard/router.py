@@ -1,5 +1,6 @@
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
 from app.api.v1.dashboard.websocket_manager import ws_handler, ws_manager
+from fastapi_cache.decorator import cache
 from app.db.DataBaseManager import db as async_db
 import logging
 
@@ -19,6 +20,7 @@ async def get_current_dashboard_state():
 
 
 @router.get("/activity_history")
+@cache(expire=600)
 async def get_activity_history():
     """Получить историю активности роботов за последний час."""
     try:

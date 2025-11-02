@@ -32,6 +32,8 @@ class Settings(BaseSettings):
     REDIS_PORT: int = Field(default=6379, description="Redis port", alias="REDIS_PORT")
     REDIS_PREFIX: str = Field(default="fastapi-cache", description="Prefix", alias="REDIS_PREFIX")
 
+    DEFAULT_ADMIN_EMAIL: str = Field(default="admin@admin.com", alias="DEFAULT_ADMIN_EMAIL")
+    DEFAULT_ADMIN_PASSWORD: str = Field(default="admin1234", alias="DEFAULT_ADMIN_PASSWORD")
 
 
 class CacheNamespace(BaseModel):

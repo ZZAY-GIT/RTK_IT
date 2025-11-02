@@ -3,7 +3,8 @@ import random
 from datetime import datetime, timezone
 import threading
 import requests
-
+import os
+import logging
 
 # Shared state for occupied positions
 occupied_positions = set()
@@ -105,7 +106,7 @@ class RobotEmulator:
 
 
         if attempts >=100:
-            print(f"{self.robot_id}: Could not find unique position after 100 attempts!")
+            logging.info(f"{self.robot_id}: Could not find unique position after 100 attempts!")
 
 
         # Расход батареи
@@ -114,14 +115,14 @@ class RobotEmulator:
     def handle_charging(self):
         if self.battery < 20 and not self.charging:
             self.charging = True
-            print(f"{self.robot_id} entered charging mode at {self.battery:.1f}%")
+            logging.info(f"{self.robot_id} entered charging mode at {self.battery:.1f}%")
 
         if self.charging:
             self.battery += random.uniform(5, 10)
             if self.battery >= 100:
                 self.battery = 100
                 self.charging = False
-                print(f"{self.robot_id} fully charged and resuming operations")
+                logging.info(f"{self.robot_id} fully charged and resuming operations")
             return True
         return False
 
@@ -148,18 +149,18 @@ class RobotEmulator:
             )
 
             if response.status_code == 200:
-                print(f" {self.robot_id}: Данные отправлены успешно!")
-                print(f" Location: {self.current_zone}-{self.current_row}-{self.current_shelf}")
-                print(f" Battery: {self.battery:.1f}% |  {len(data['scan_results'])} товаров")
+                logging.info(f" {self.robot_id}: Данные отправлены успешно!")
+                logging.info(f" Location: {self.current_zone}-{self.current_row}-{self.current_shelf}")
+                logging.info(f" Battery: {self.battery:.1f}% |  {len(data['scan_results'])} товаров")
             else:
-                print(f" {self.robot_id}: Ошибка {response.status_code}")
+                logging.info(f" {self.robot_id}: Ошибка {response.status_code}")
 
         except Exception as e:
-            print(f" {self.robot_id}: Ошибка подключения: {e}")
+            logging.info(f" {self.robot_id}: Ошибка подключения: {e}")
 
     def run(self):
         """Основной цикл работы робота"""
-        print(f" Робот {self.robot_id} запущен!")
+        logging.info(f" Робот {self.robot_id} запущен!")
 
         while True:
             is_charging = self.handle_charging()
@@ -168,7 +169,7 @@ class RobotEmulator:
                 self.move_to_next_location()
 
             else:
-                print(f"{self.robot_id} charging...{self.battery:.1f}%")
+                logging.info(f"{self.robot_id} charging...{self.battery:.1f}%")
             time.sleep(10)  # Отправка каждые 10 секунд
 
 def generate_random_robot_id():
@@ -176,10 +177,16 @@ def generate_random_robot_id():
     return robot_id
 
 if __name__ == "__main__":
-    num_robots = int(input("Enter number of robots:"))
+    num_robots_str = os.getenv("NUM_ROBOTS", "12")
+    try:
+        num_robots = int(num_robots_str)
+    except ValueError:
+        logging.info(f"Ошибка: NUM_ROBOTS должно быть числом, получено '{num_robots_str}'. Запускаю 1 робота.")
+        num_robots = 1
     robots = []
     for i in range(num_robots):
         robot_id = generate_random_robot_id()
+        api_url = os.getenv("API_URL", "http://localhost:8000")
         robots.append(RobotEmulator(robot_id, api_url))
 
     threads = []

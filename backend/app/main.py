@@ -22,7 +22,7 @@ async def lifespan(app: FastAPI):
     logger.info("Starting application...")
 
     await db.create_tables()
-
+    await db.init_default_user()
     # Redis + Cache
     redis = Redis(
         host=REDIS.host,
@@ -60,7 +60,6 @@ app = FastAPI(title="Simple FastAPI Service", version="1.0.0", lifespan=lifespan
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 

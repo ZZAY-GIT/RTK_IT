@@ -70,9 +70,6 @@ services:
     build:
       context: .
       dockerfile: emulator/Dockerfile
-    depends_on:
-      backend:
-        condition: service_healthy
     environment:
       - API_URL=http://backend:8000
     restart: unless-stopped
