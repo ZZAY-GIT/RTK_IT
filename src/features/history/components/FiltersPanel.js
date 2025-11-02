@@ -92,18 +92,18 @@ export default function FiltersPanel({
           </select>
         </div>
         <div className="col-span-1 sm:col-span-2">
-          <label className="block text-sm text-gray-600 dark:text-gray-300">Поиск по артикулу</label>
+          <label className="block text-sm text-gray-600 dark:text-gray-300">Поиск по артикулу или названию</label>
           <div className="relative">
             <input
               type="text"
               value={filters.search || ''}
               onChange={e => handleFilterChange({ search: e.target.value })}
-              placeholder="Введите артикул товара"
+              placeholder="Введите артикул или название товара" // ← ИЗМЕНИТЬ
               className="w-full p-2 pl-10 border rounded-lg bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-800 dark:text-gray-100"
             />
             <SearchIcon className="absolute left-3 top-3 h-5 w-5 text-gray-400 dark:text-gray-300" />
+            </div>
           </div>
-        </div>
         <div className="flex space-x-2 items-end col-span-1 sm:col-span-1">
           <button
             onClick={applyFilters}

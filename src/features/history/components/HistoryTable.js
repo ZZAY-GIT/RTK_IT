@@ -14,7 +14,8 @@ export default function HistoryTable({
   endItem,
   finalTotalItems,
   sortConfig, // ДОБАВИТЬ
-  handleSort // ДОБАВИТЬ
+  handleSort,// ДОБАВИТЬ
+  loading 
 }) {
   const getSortArrow = (key) => {
     if (sortConfig.key !== key) return ' ↕'; // Двойная стрелка когда не активно
@@ -27,8 +28,11 @@ export default function HistoryTable({
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-4">
       <div className="flex justify-between items-center mb-4">
         <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100">История инвентаризации</h3>
-        <div className="text-sm text-gray-600 dark:text-gray-300">Показано {startItem}-{endItem} из {finalTotalItems}</div>
+        <div className="flex items-center gap-2">
+          {loading && <div className="text-blue-600 dark:text-blue-400 text-sm">Загрузка...</div>}
+          <div className="text-sm text-gray-600 dark:text-gray-300">Показано {startItem}-{endItem} из {finalTotalItems}</div>
       </div>
+       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-[800px]">
           <thead>

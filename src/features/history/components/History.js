@@ -195,6 +195,7 @@ export default function History({ onOpenCSVModal }) {
             finalTotalItems={finalTotalItems}
             sortConfig={sortConfig} // ДОБАВИТЬ
             handleSort={handleSort} // ДОБАВИТЬ
+            loading={loading}
           />
         </div>
       </div>

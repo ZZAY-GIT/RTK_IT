@@ -76,10 +76,15 @@ class RobotResponse(BaseModel):
 
     class Config:
         from_attributes = True
+class PredictionItem(BaseModel):
+    product_id: str
+    days_until_stockout: int
+    recommended_order: int
+    created_at: str
 
 class PredictRequest(BaseModel):
     period_days: int
-    categories: List[str]
+    categories: List[PredictionItem]
 
 class PredictResponse(BaseModel):
     predictions: List[Dict[str, Any]]

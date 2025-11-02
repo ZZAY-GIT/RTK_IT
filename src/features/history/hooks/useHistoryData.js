@@ -41,6 +41,16 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
     }));
   };
 
+  const filterDataBySearch = (data, searchQuery) => {
+  if (!searchQuery) return data;
+  
+  const query = searchQuery.toLowerCase();
+  return data.filter(item => 
+    item.productId.toLowerCase().includes(query) ||
+    item.productName.toLowerCase().includes(query)
+  );
+};
+
   // Функция для преобразования статусов БД в русские для отображения
   const getDisplayStatus = (statusDb) => {
     switch (statusDb) {
@@ -61,10 +71,15 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
     }
   };
 
-  const apiResponse = reduxHistoryData || {};
-  
-  const finalHistoryData = transformApiData(apiResponse);
-  const finalTotalItems = apiResponse.total || finalHistoryData.length;
+ // СТАЛО:
+const apiResponse = reduxHistoryData || {};
+
+// ПРИМЕНЯЕМ поисковую фильтрацию к данным
+const rawHistoryData = transformApiData(apiResponse);
+const searchedHistoryData = filterDataBySearch(rawHistoryData, filters.search);
+
+const finalHistoryData = searchedHistoryData;
+const finalTotalItems = searchedHistoryData.length; // Используем длину отфильтрованного массива
 
   const allUniqueProducts = [...new Map(finalHistoryData.map(item => [item.productId, {
     productId: item.productId,
@@ -80,27 +95,26 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
     loadHistoryData();
   }, []);
 
-  const prepareApiFilters = (filters) => {
-    const apiFilters = {};
-    
-    // ИСПРАВЛЕНИЕ: для включительной фильтрации по датам
-    if (filters.startDate) {
-      // Устанавливаем начало дня для startDate
-      apiFilters.from_date = filters.startDate + 'T00:00:00';
-    }
-    if (filters.endDate) {
-      // Устанавливаем конец дня для endDate (включительно)
-      apiFilters.to_date = filters.endDate + 'T23:59:59';
-    }
-    
-    if (filters.zones?.length > 0) apiFilters.zone = filters.zones[0];
-    if (filters.status?.length > 0) {
-      const dbStatus = getDbStatus(filters.status[0]);
-      if (dbStatus) apiFilters.status = dbStatus;
-    }
-    if (filters.search) apiFilters.product_id = filters.search;
-    return apiFilters;
-  };
+  // СТАЛО:
+const prepareApiFilters = (filters) => {
+  const apiFilters = {};
+  
+  if (filters.startDate) {
+    apiFilters.from_date = filters.startDate + 'T00:00:00';
+  }
+  if (filters.endDate) {
+    apiFilters.to_date = filters.endDate + 'T23:59:59';
+  }
+  
+  if (filters.zones?.length > 0) apiFilters.zone = filters.zones[0];
+  if (filters.status?.length > 0) {
+    const dbStatus = getDbStatus(filters.status[0]);
+    if (dbStatus) apiFilters.status = dbStatus;
+  }
+  // УБИРАЕМ фильтрацию по search из API - будем фильтровать на клиенте
+  return apiFilters;
+};
+
   const loadHistoryData = async (newFilters = filters) => {
     setLoading(true);
     try {
@@ -120,17 +134,38 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
     if (newFilters.startDate || newFilters.endDate) setActiveQuickPeriod(null);
   };
 
-  const applyFilters = () => {
-    setCurrentPage(1);
+ // СТАЛО:
+const applyFilters = () => {
+  setCurrentPage(1);
+  
+  // Если есть только поисковый запрос (без других фильтров), фильтруем на клиенте
+  const hasOnlySearch = filters.search && 
+    !filters.startDate && 
+    !filters.endDate && 
+    !filters.zones?.length && 
+    !filters.status?.length;
+  
+  if (hasOnlySearch) {
+    setLoading(true);
+    // Имитируем загрузку для лучшего UX
+    setTimeout(() => {
+      setLoading(false);
+    }, 300);
+  } else {
+    // Если есть другие фильтры или нет поиска, загружаем данные с сервера
     loadHistoryData();
-  };
+  }
+};
 
-  const resetFilters = () => {
-    const resetFilters = { startDate: null, endDate: null, zones: [], categories: [], status: [], search: '' };
-    dispatch({ type: 'warehouse/setFilters', payload: resetFilters });
-    setActiveQuickPeriod(null);
-    loadHistoryData(resetFilters);
-  };
+  // СТАЛО:
+const resetFilters = () => {
+  const resetFilters = { startDate: null, endDate: null, zones: [], categories: [], status: [], search: '' };
+  dispatch({ type: 'warehouse/setFilters', payload: resetFilters });
+  setActiveQuickPeriod(null);
+  setCurrentPage(1);
+  // Перезагружаем данные с сервера для получения полного списка
+  loadHistoryData(resetFilters);
+};
 
   const handleQuickPeriod = (period) => {
     const today = new Date();
@@ -149,18 +184,28 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
   };
 
   // Включаем автоматическое применение фильтров с debounce
-  useEffect(() => {
-    const hasFilters = filters.startDate || filters.endDate || filters.zones?.length > 0 || filters.status?.length > 0 || filters.search;
+  // СТАЛО:
+useEffect(() => {
+  const hasDateFilters = filters.startDate || filters.endDate;
+  const hasOtherFilters = filters.zones?.length > 0 || filters.status?.length > 0;
+  const hasSearch = filters.search;
+  
+  if (hasDateFilters || hasOtherFilters) {
+    const timer = setTimeout(() => {
+      applyFilters();
+    }, 500);
     
-    if (hasFilters) {
-      const timer = setTimeout(() => {
-        // Проверяем, действительно ли фильтры изменились
-        applyFilters();
-      }, 500);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [filters.startDate, filters.endDate, filters.zones, filters.status, filters.search]);
+    return () => clearTimeout(timer);
+  } else if (hasSearch) {
+    // Для поиска применяем фильтрацию сразу (только клиентскую)
+    const timer = setTimeout(() => {
+      setCurrentPage(1);
+      setLoading(false);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }
+}, [filters.startDate, filters.endDate, filters.zones, filters.status, filters.search]);
 
   const selectAllTableItems = () => {
     const currentItems = getCurrentTableItems();

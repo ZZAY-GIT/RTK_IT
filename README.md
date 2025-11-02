@@ -1,72 +1,206 @@
-# RTK_IT
+# 🏭 Умный склад - Система мониторинга
 
-# Getting Started with Create React App
+Современная система мониторинга склада с интерактивной картой, умными уведомлениями и аналитикой в реальном времени.
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+## 🚀 Быстрый запуск
 
-## Available Scripts
+### Backend (Python)
 
-In the project directory, you can run:
+```bash
+# Переход в директорию бэкенда
+cd backend
 
-### `npm start`
+# Активация виртуального окружения (Poetry)
+poetry shell
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+# Установка зависимостей
+poetry install
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+# Запуск сервера разработки
+python run.py
 
-### `npm test`
+# Сервер будет доступен по адресу:
+# http://localhost:8000
+```
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+### Frontend
+```bash
+# Переход в директорию фронтенда
+cd front
 
-### `npm run build`
+# Установка зависимостей (если нужно)
+npm install
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+# Запуск в режиме разработки
+npm start
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+# Приложение будет доступно по адресу:
+# http://localhost:3000
+```
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### Структура проекта
+```bash
+    RTK_IT/
+    ├── 🐍 Бэкенд (Python/FastAPI)
+    │   ├── main.py                 # Основной файл приложения
+    │   ├── run.py                 # Скрипт запуска
+    │   ├── settings.py            # Настройки приложения
+    │   ├── api/                   # API модули
+    │   │   ├── api.py             # Основные эндпоинты
+    │   │   ├── websocket_manager.py # WebSocket менеджер
+    │   │   ├── emulator.py        # Эмулятор данных
+    │   │   └── schemas.py         # Pydantic схемы
+    │   ├── app/                   # Основное приложение
+    │   │   ├── main.py            # FastAPI приложение
+    │   │   ├── core/              # Ядро приложения
+    │   │   ├── db/                # Работа с базой данных
+    │   │   └── api/               # API роутеры
+    │   ├── db/                    # Модуль базы данных
+    │   │   ├── DataBaseManager.py # Менеджер БД
+    │   │   └── models.py          # Модели данных
+    │   ├── auth/                  # Аутентификация
+    │   │   └── auth_service.py    # Сервис аутентификации
+    │   ├── ai/                    # Искусственный интеллект
+    │   │   └── yandex_gpt_client.py # Клиент Yandex GPT
+    │   └── tests/                 # Тесты
+    │       ├── test_api.py
+    │       └── test_database_manager.py
+    │
+    ├── ⚛️ Фронтенд (React)
+    │   ├── src/
+    │   │   ├── App.js             # Основной компонент
+    │   │   ├── components/        # Переиспользуемые компоненты
+    │   │   │   ├── Header.js
+    │   │   │   ├── InteractiveWarehouseMap.jsx
+    │   │   │   ├── NotificationsPanel.jsx
+    │   │   │   └── MapControls.jsx
+    │   │   ├── features/          # Функциональные модули
+    │   │   │   ├── dashboard/     # Панель мониторинга
+    │   │   │   ├── history/       # История сканирований
+    │   │   │   └── admin/         # Админ панель
+    │   │   ├── hooks/             # Кастомные хуки
+    │   │   │   ├── useNotifications.js
+    │   │   │   ├── useTheme.js
+    │   │   │   └── useAuth.js
+    │   │   ├── store/             # Redux store
+    │   │   │   └── warehouseSlice.js
+    │   │   └── pages/             # Страницы приложения
+    │   ├── public/                # Статические файлы
+    │   └── package.json           # Зависимости Node.js
+    │
+    ├── 🐘 База данных
+    │   ├── docker-compose.yaml    # Docker конфигурация
+    │   ├── init.sql              # Инициализация БД
+    │   └── init1.sql             # Дополнительные скрипты
+    │
+    └── 📄 Конфигурационные файлы
+        ├── pyproject.toml        # Python зависимости (Poetry)
+        ├── tailwind.config.js    # Конфиг Tailwind CSS
+        ├── pytest.ini           # Конфиг тестов
+        └── README.md            # Документация
+```
 
-### `npm run eject`
+### Технологический стек
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+# Бэкенд
+```bash
+Python 3.8+ - основной язык
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+FastAPI - современный веб-фреймворк
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+PostgreSQL - реляционная база данных
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+WebSocket - реальное время
 
-## Learn More
+Pydantic - валидация данных
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+Poetry - управление зависимостями
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+# Фронтенд
+```bash
+React 18 - UI библиотека
 
-### Code Splitting
+Redux Toolkit - управление состоянием
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+Tailwind CSS - утилитарные стили
 
-### Analyzing the Bundle Size
+React Router - навигация
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+Chart.js - графики и аналитика
 
-### Making a Progressive Web App
+Heroicons - иконки
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+# Инициализация приложения через Docker
+```bash
+# Запуск
+docker-compose build
+docker-compose up -d
 
-### Advanced Configuration
+# Просмотр базы данных
+psql -h localhost -p 5432 -U warehouse_user warehouse_db
+password: secure_password
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+## Основные функции
 
-### Deployment
+## Страница /dashboard
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+### Мониторинг в реальном времени
 
-### `npm run build` fails to minify
+- Интерактивная SVG карта склада (26×50 зон)
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- Отслеживание роботов в реальном времени
+
+- Цветовая индикация статусов зон и роботов
+
+- Масштабирование и панорамирование карты
+
+### Умная система уведомлений
+
+- Автообнаружение критических остатков
+
+- Всплывающие уведомления с действиями
+
+- Подсветка проблемных зон на карте
+
+### Аналитика и AI
+
+- Прогнозирование остатков на 7 дней (Yandex GPT)
+
+- Визуализация активности склада
+
+- Статистика в реальном времени
+
+- Рекомендации по пополнению запасов
+
+## Страница /history
+
+### Фильтры
+
+По:
+- дате
+- зоне 
+- статусу
+- артикулу
+### Построение графика 
+
+- по истории товара
+
+### Экспорт в Excel
+
+- Только выбранные строки → история_инвентаризации.xlsx
+
+## Страница /admin (доступна с ролью admin/operator)
+### Управление товарами
+
+## Пользовательский интерфейс
+
+- Адаптивный дизайн (мобильные устройства)
+
+- Темная/светлая темы
+
+- Интуитивная навигация
+
+- Современный Material Design

@@ -880,9 +880,18 @@ class DataBaseManager:
                 product_id = prediction.get("product_id")
                 days_until_stockout = prediction.get("days_until_stockout")
                 recommended_order = prediction.get("recommended_order")
-
-                # ГЕНЕРИРУЕМ ДАТУ, если ее нет в запросе
-                prediction_date = prediction.get("created_at") or datetime.now()
+                created_at_str = prediction.get("created_at") or datetime.now()
+                if created_at_str:
+                    # Если дата пришла в запросе, парсим строку в объект datetime
+                    try:
+                        prediction_date = datetime.fromisoformat(created_at_str)
+                    except ValueError:
+                        # Если строка невалидна, используем текущую дату и логируем предупреждение
+                        logging.warning(f"Invalid date format for product {product_id}: {created_at_str}. Using current time.")
+                        prediction_date = datetime.now()
+                else:
+                    # Если даты нет в запросе, генерируем её
+                    prediction_date = datetime.now()
 
                 new_prediction = self.AIPrediction(
                     product_id=product_id,
@@ -893,7 +902,6 @@ class DataBaseManager:
                 )
                 _s.add(new_prediction)
 
-                # ВСЕГДА возвращаем дату в формате ISO
                 saved_predictions_data.append({
                     "product_id": product_id,
                     "days_until_stockout": days_until_stockout,
@@ -913,22 +921,23 @@ class DataBaseManager:
 
     async def get_data_for_predict(self):
         current_date = datetime.now().date()
+        to_date = current_date + timedelta(days=1) 
         from_date = current_date - timedelta(days=3)
         
         historical_data = await self.get_filter_inventory_history(
             from_date=from_date,
-            to_date=current_date,
-            status="CRITICAL"
+            to_date=to_date,
+            status="CRITICAL",
+            limit=100
         )
         
         if not historical_data:
-            # Если нет критических остатков, предсказывать нечего
+            logging.info("No critical inventory data found for prediction.")
             return PredictResponse(predictions=[], confidence=0.0)
 
         inventory_data = await self.get_products_unique(historical_data)
-        
         if not inventory_data:
-            # Если уникальных продуктов нет, тоже нечего предсказывать
+            logging.info("No unique products found in critical inventory.")
             return PredictResponse(predictions=[], confidence=0.0)
         return inventory_data, historical_data
     
@@ -985,7 +994,7 @@ class DataBaseManager:
 
 
     # # Сводка работы роботов по фильтрам
-    async def get_filter_inventory_history(self, from_date=None, to_date=None, zone=None, shelf=None, status=None, category=None):
+    async def get_filter_inventory_history(self, from_date=None, to_date=None, zone=None, shelf=None, status=None, category=None, limit=None):
         async with self.DBSession() as _s:
             # Базовый запрос для inventory_history с JOIN к products
             query = select(InventoryHistory, Product.name.label('product_name')).join(Product, InventoryHistory.product_id == Product.id)
@@ -1001,8 +1010,9 @@ class DataBaseManager:
                 query = query.filter(InventoryHistory.shelf_number == shelf)
             if status is not None:
                 query = query.filter(InventoryHistory.status == status)
-
-            fileter_history = []
+            if limit is not None:
+                query = query.limit(limit)
+            filtered_history = []
             # Получаем все записи inventory_history с именами продуктов
             result = await _s.execute(query)
             records = result.all()
@@ -1048,8 +1058,8 @@ class DataBaseManager:
                     result_json['recommended_order'] = 0
                     result_json['discrepancy'] = inv_his.quantity
                     result_json['prediction_confidence'] = None
-                fileter_history.append(result_json)
-            return fileter_history
+                filtered_history.append(result_json)
+            return filtered_history
     # Сводка количества активных роботов, возвращает кортеж формата (n активных роботов, m всего роботов)
     async def get_active_robots(self): # Не проверено
         async with self.DBSession() as _s:
