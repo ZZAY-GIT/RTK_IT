@@ -18,15 +18,22 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
     return apiData.items.map(item => ({
       id: Number(item.id),
       date: item.scanned_at ? new Date(item.scanned_at).toLocaleDateString('ru-RU') : 'N/A',
+      // ДОБАВИТЬ поле с датой и временем для отображения
+      dateTime: item.scanned_at ? new Date(item.scanned_at).toLocaleString('ru-RU', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      }) : 'N/A',
       productId: item.product_id || 'N/A',
       productName: item.product_name || `Товар ${item.product_id || 'N/A'}`,
       actualQuantity: item.quantity || 0,
       robotId: item.robot_id || 'N/A',
       zone: item.zone || 'N/A',
       shelfNumber: item.shelf_number || 'N/A',
-      // ИСПРАВЛЕНИЕ: преобразуем статусы из БД в русские для отображения
       status: getDisplayStatus(item.status),
-      statusDb: item.status, // сохраняем оригинальный статус из БД
+      statusDb: item.status,
       expectedQuantity: item.recommended_order || 0,
       discrepancy: item.discrepancy || 0,
       predictionConfidence: item.prediction_confidence || null,
@@ -75,18 +82,25 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
 
   const prepareApiFilters = (filters) => {
     const apiFilters = {};
-    if (filters.startDate) apiFilters.from_date = filters.startDate;
-    if (filters.endDate) apiFilters.to_date = filters.endDate;
+    
+    // ИСПРАВЛЕНИЕ: для включительной фильтрации по датам
+    if (filters.startDate) {
+      // Устанавливаем начало дня для startDate
+      apiFilters.from_date = filters.startDate + 'T00:00:00';
+    }
+    if (filters.endDate) {
+      // Устанавливаем конец дня для endDate (включительно)
+      apiFilters.to_date = filters.endDate + 'T23:59:59';
+    }
+    
     if (filters.zones?.length > 0) apiFilters.zone = filters.zones[0];
     if (filters.status?.length > 0) {
-      // ИСПРАВЛЕНИЕ: преобразуем русский статус в статус БД
       const dbStatus = getDbStatus(filters.status[0]);
       if (dbStatus) apiFilters.status = dbStatus;
     }
     if (filters.search) apiFilters.product_id = filters.search;
     return apiFilters;
   };
-
   const loadHistoryData = async (newFilters = filters) => {
     setLoading(true);
     try {

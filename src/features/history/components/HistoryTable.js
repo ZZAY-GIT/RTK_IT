@@ -74,7 +74,10 @@ export default function HistoryTable({
                     className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
                   />
                 </td>
-                <td className="p-2 text-gray-800 dark:text-gray-100">{d.date}</td>
+                {/* ОБНОВИТЕ эту ячейку для отображения даты и времени */}
+                <td className="p-2 text-gray-800 dark:text-gray-100 whitespace-nowrap">
+                  {d.dateTime}
+                </td>
                 <td className="p-2 text-gray-800 dark:text-gray-100">{d.robotId}</td>
                 <td className="p-2 text-gray-800 dark:text-gray-100">{d.zone}</td>
                 <td className="p-2 text-gray-800 dark:text-gray-100">{d.shelfNumber}</td>
