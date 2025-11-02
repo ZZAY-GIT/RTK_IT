@@ -7,7 +7,7 @@ if __name__ == "__main__":
     # asyncio.run(db.add_user("ampleenkov.do@gmail.com", "123123123", "Daniil", "operator"))
     
     uvicorn.run(
-        "app.main:app",
+        "backend.app.main:app",
         host="0.0.0.0",
         port=8000,
         reload=False,  # False для production

@@ -33,7 +33,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: app/Dockerfile
+      dockerfile: backend/Dockerfile
     ports:
       - "8000:8000"
     depends_on:
@@ -44,10 +44,10 @@ services:
     env_file:
       - .env                     # ← ГЛАВНОЕ: .env загружается!
     volumes:
-      - .:/app                   # ← Чтобы .env попал в контейнер
+      - .:/backend                   # ← Чтобы .env попал в контейнер
     environment:
       - PYTHONUNBUFFERED=1
-      - PYTHONPATH=/app
+      - PYTHONPATH=/backend
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
@@ -58,14 +58,24 @@ services:
   # Frontend (React / Next.js / etc.)
   frontend:
     build:
-      context: .
-      dockerfile: src/Dockerfile
+      context: ./frontend
+      dockerfile: frontend/Dockerfile
     ports:
       - "3000:3000"
     depends_on:
       - backend
     environment:
       - REACT_APP_API_URL=http://localhost:8000
+  emulator:
+    build:
+      context: .
+      dockerfile: emulator/Dockerfile
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      - API_URL=http://backend:8000
+    restart: unless-stopped
 
 volumes:
   postgres_data:
