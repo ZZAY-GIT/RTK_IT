@@ -35,6 +35,12 @@ npm start
 # http://localhost:3000
 ```
 
+### Данные для входа
+```
+email: admin@admin.com
+password: admin1234
+```
+
 ### Структура проекта
 ```bash
     RTK_IT/
