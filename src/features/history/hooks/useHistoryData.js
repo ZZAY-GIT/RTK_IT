@@ -136,8 +136,14 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
 
   // Включаем автоматическое применение фильтров с debounce
   useEffect(() => {
-    if (filters.startDate || filters.endDate || filters.zones?.length > 0 || filters.status?.length > 0 || filters.search) {
-      const timer = setTimeout(applyFilters, 500);
+    const hasFilters = filters.startDate || filters.endDate || filters.zones?.length > 0 || filters.status?.length > 0 || filters.search;
+    
+    if (hasFilters) {
+      const timer = setTimeout(() => {
+        // Проверяем, действительно ли фильтры изменились
+        applyFilters();
+      }, 500);
+      
       return () => clearTimeout(timer);
     }
   }, [filters.startDate, filters.endDate, filters.zones, filters.status, filters.search]);
