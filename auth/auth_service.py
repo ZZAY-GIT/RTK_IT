@@ -24,7 +24,7 @@ class AuthService:
         if not hashed or not verify_password(password, hashed):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail=f"Invalid email or passord {hashed}",
+                detail=f"Invalid email or password",
                 headers={"WWW-Authenticate": "Bearer"}
             )
 
