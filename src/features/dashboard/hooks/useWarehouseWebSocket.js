@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useDispatch } from 'react-redux';
 import { setWebsocketStatus, updateDashboardFromWebSocket } from '../../../store/warehouseSlice';
 
-const WS_URL = 'ws://localhost:8000/api/ws/dashboard'; // Измени на свой URL если нужно
+const WS_URL = 'ws://localhost:8000/api/dashboard/ws/'; // Измени на свой URL если нужно
 
 export function useWarehouseWebSocket(enabled = true) {
   const dispatch = useDispatch();
@@ -56,7 +56,7 @@ export function useWarehouseWebSocket(enabled = true) {
                 
               case 'ping':
                 // Отвечаем на ping от сервера
-                ws.send('pong');
+                ws.send(JSON.stringify({ type: "pong" }));
                 break;
                 
               case 'pong':

@@ -74,15 +74,6 @@ function Header({ onOpenCSVModal }) {
             )}
           </div>
 
-          {/* --- ДЕСКТОПНЫЙ ПРОФИЛЬ --- */}
-          <div className="hidden sm:block text-sm text-right">
-            <div className="font-medium text-gray-700 dark:text-gray-200">{user?.name || user?.email}</div>
-            <div className="text-xs text-gray-500 dark:text-gray-400">
-              {user?.role === 'admin' ? 'Администратор' : 
-               user?.role === 'operator' ? 'Оператор' : 'Пользователь'}
-            </div>
-          </div>
-
           {/* Тема */}
           <button
             onClick={toggleTheme}

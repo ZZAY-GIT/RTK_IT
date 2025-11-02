@@ -52,7 +52,7 @@ export const fetchProducts = createAsyncThunk(
   async (filters) => {
     const user = localStorage.getItem('user') || sessionStorage.getItem('user');
     
-    const response = await axios.get('http://localhost:8000/api/admin/products', { 
+    const response = await axios.get('http://localhost:8000/api/admin/products/', { 
       params: filters,
       headers: {
         'X-User-Data': JSON.stringify(user)
@@ -67,7 +67,7 @@ export const addProduct = createAsyncThunk(
   async (product) => {
     const user = localStorage.getItem('user') || sessionStorage.getItem('user');
     
-    const response = await axios.post('http://localhost:8000/api/admin/products', product, {
+    const response = await axios.post('http://localhost:8000/api/admin/products/', product, {
       headers: {
         'X-User-Data': user
       }
@@ -110,7 +110,7 @@ export const fetchUsers = createAsyncThunk(
   async () => {
     const user = localStorage.getItem('user') || sessionStorage.getItem('user');
     
-    const response = await axios.get('http://localhost:8000/api/admin/user', {
+    const response = await axios.get('http://localhost:8000/api/admin/users/', {
       headers: {
         'X-User-Data': JSON.stringify(user)
       }
@@ -124,7 +124,7 @@ export const createUser = createAsyncThunk(
   async (userData) => {
     const user = localStorage.getItem('user') || sessionStorage.getItem('user');
     
-    const response = await axios.post('http://localhost:8000/api/admin/user', userData, {
+    const response = await axios.post('http://localhost:8000/api/admin/users/', userData, {
       headers: {
         'X-User-Data': user
       }
@@ -139,7 +139,7 @@ export const updateUser = createAsyncThunk(
     const currentUser = localStorage.getItem('user') || sessionStorage.getItem('user');
     
     try {
-      const response = await axios.put(`http://localhost:8000/api/admin/user/${id}`, user, {
+      const response = await axios.put(`http://localhost:8000/api/admin/users/${id}`, user, {
         headers: {
           'X-User-Data': currentUser,
           'Content-Type': 'application/json'
@@ -159,7 +159,7 @@ export const deleteUser = createAsyncThunk(
     const user = localStorage.getItem('user') || sessionStorage.getItem('user');
     
     try {
-      const response = await axios.delete(`http://localhost:8000/api/admin/user/${id}`, {
+      const response = await axios.delete(`http://localhost:8000/api/admin/users/${id}`, {
         headers: {
           'X-User-Data': user
         }
@@ -178,7 +178,7 @@ export const createRobot = createAsyncThunk(
   async (robot) => {
     const user = localStorage.getItem('user') || sessionStorage.getItem('user');
     
-    const response = await axios.post('http://localhost:8000/api/admin/robot', robot, {
+    const response = await axios.post('http://localhost:8000/api/admin/robots/', robot, {
       headers: {
         'X-User-Data': user  // ← ДОБАВИТЬ этот заголовок
       }
@@ -193,7 +193,7 @@ export const fetchRobots = createAsyncThunk(
   async () => {
     const user = localStorage.getItem('user') || sessionStorage.getItem('user');
     
-    const response = await axios.get('http://localhost:8000/api/admin/robot', {
+    const response = await axios.get('http://localhost:8000/api/admin/robots/', {
       headers: {
         'X-User-Data': JSON.stringify(user)  // ← ДОБАВИТЬ
       }
@@ -207,7 +207,7 @@ export const updateRobot = createAsyncThunk(
   async ({ id, robot }) => {
     const user = localStorage.getItem('user') || sessionStorage.getItem('user');
     
-    const response = await axios.put(`http://localhost:8000/api/admin/robot/${id}`, robot, {
+    const response = await axios.put(`http://localhost:8000/api/admin/robots/${id}`, robot, {
       headers: {
         'X-User-Data': user,  // ← ДОБАВИТЬ
         'Content-Type': 'application/json'
@@ -222,7 +222,7 @@ export const deleteRobot = createAsyncThunk(
   async (id) => {
     const user = localStorage.getItem('user') || sessionStorage.getItem('user');
     
-    await axios.delete(`http://localhost:8000/api/admin/robot/${id}`, {
+    await axios.delete(`http://localhost:8000/api/admin/robots/${id}`, {
       headers: {
         'X-User-Data': user  // ← ДОБАВИТЬ
       }
