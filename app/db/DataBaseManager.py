@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from typing import List, Dict
 import pandas as pd
 import io
-from api.schemas import (
+from app.api.v1.schemas import (
     UserResponse,
     ProductResponse,
     RobotResponse,
