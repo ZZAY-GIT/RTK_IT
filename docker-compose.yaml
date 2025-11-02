@@ -3,7 +3,7 @@ services:
   redis:
     image: redis:8-alpine
     ports:
-      - "6379:6379"
+      - "6666:6379"
 
   # PostgreSQL база данных
   postgres:
@@ -16,7 +16,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     ports:
-      - "5432:5432"
+      - "6433:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U warehouse_user"]
       interval: 10s
