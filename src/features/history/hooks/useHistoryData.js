@@ -148,10 +148,6 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
     }
   }, [filters.startDate, filters.endDate, filters.zones, filters.status, filters.search]);
 
-  const getCurrentTableItems = () => {
-    return finalHistoryData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  };
-
   const selectAllTableItems = () => {
     const currentItems = getCurrentTableItems();
     setTableSelectedItems(currentItems);
@@ -232,6 +228,78 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
   const hasActiveFilters = filters.startDate || filters.endDate || filters.zones?.length > 0 || filters.status?.length > 0 || filters.search;
   const hasChartData = chartSelectedItems.length > 0 && finalHistoryData.some(item => chartSelectedItems.some(s => s.productId === item.productId));
 
+  const [sortConfig, setSortConfig] = useState({
+    key: null,
+    direction: 'asc' // 'asc' | 'desc'
+  });
+
+  // Функция для сортировки данных
+  const getSortedData = (data) => {
+    if (!sortConfig.key) return data;
+
+    return [...data].sort((a, b) => {
+      let aValue = a[sortConfig.key];
+      let bValue = b[sortConfig.key];
+
+      // Для числовых значений (расхождение)
+      if (sortConfig.key === 'discrepancy') {
+        aValue = Number(aValue) || 0;
+        bValue = Number(bValue) || 0;
+      }
+      
+      // Для дат - преобразуем в timestamp для корректного сравнения
+      if (sortConfig.key === 'date') {
+        aValue = new Date(a.scanned_at || aValue).getTime();
+        bValue = new Date(b.scanned_at || bValue).getTime();
+      }
+
+      if (aValue < bValue) {
+        return sortConfig.direction === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortConfig.direction === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+  };
+
+  // Функция для обработки сортировки
+  const handleSort = (key) => {
+    setSortConfig(current => {
+      // Если кликаем по другой колонке, начинаем с возрастания
+      if (current.key !== key) {
+        return {
+          key,
+          direction: 'asc'
+        };
+      }
+      
+      // Если кликаем по той же колонке - циклически меняем состояние
+      if (current.direction === 'asc') {
+        return {
+          key,
+          direction: 'desc'
+        };
+      } else if (current.direction === 'desc') {
+        // Третий клик - сбрасываем сортировку
+        return {
+          key: null,
+          direction: 'asc'
+        };
+      }
+      
+      return current;
+    });
+  };
+
+  // Получаем отсортированные данные
+  const sortedHistoryData = getSortedData(finalHistoryData);
+
+  // Обновляем функции, чтобы использовать отсортированные данные
+  const getCurrentTableItems = () => {
+    return sortedHistoryData.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  };
+
   return {
     historyItems: finalHistoryData,
     finalHistoryData,
@@ -267,13 +335,18 @@ export function useHistoryData(reduxHistoryData, filters, dispatch) {
     clearChartSelection,
     exportToExcel,
     getCurrentTableItemsCount,
-    getCurrentTableItems,
     availableZones,
     totalPages,
     startItem,
     endItem,
     hasActiveFilters,
     hasChartData,
-    applyFilters
+    applyFilters,
+    sortedHistoryData,
+    sortConfig,
+    handleSort,
+    getCurrentTableItems, // теперь использует sortedHistoryData
+    // Обновляем finalHistoryData для графика, если нужно
+    finalHistoryData: sortedHistoryData,
   };
 }

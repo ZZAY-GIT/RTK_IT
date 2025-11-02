@@ -12,8 +12,17 @@ export default function HistoryTable({
   totalPages,
   startItem,
   endItem,
-  finalTotalItems
+  finalTotalItems,
+  sortConfig, // ДОБАВИТЬ
+  handleSort // ДОБАВИТЬ
 }) {
+  const getSortArrow = (key) => {
+    if (sortConfig.key !== key) return ' ↕'; // Двойная стрелка когда не активно
+    if (sortConfig.direction === 'asc') return ' ↑';
+    if (sortConfig.direction === 'desc') return ' ↓';
+    return ' ↕';
+  };
+
   return (
     <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-md p-4">
       <div className="flex justify-between items-center mb-4">
@@ -32,7 +41,12 @@ export default function HistoryTable({
                   className="text-blue-600 dark:text-blue-400 border-gray-300 dark:border-gray-600"
                 />
               </th>
-              <th className="p-2 text-left text-gray-800 dark:text-gray-100">Дата</th>
+              <th 
+                className="p-2 text-left text-gray-800 dark:text-gray-100 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                onClick={() => handleSort('date')}
+              >
+                Дата{getSortArrow('date')}
+              </th>
               <th className="p-2 text-left text-gray-800 dark:text-gray-100">ID робота</th>
               <th className="p-2 text-left text-gray-800 dark:text-gray-100">Зона</th>
               <th className="p-2 text-left text-gray-800 dark:text-gray-100">Полка</th>
@@ -40,7 +54,12 @@ export default function HistoryTable({
               <th className="p-2 text-left text-gray-800 dark:text-gray-100">Название</th>
               <th className="p-2 text-left text-gray-800 dark:text-gray-100">Ожидаемое</th>
               <th className="p-2 text-left text-gray-800 dark:text-gray-100">Фактическое</th>
-              <th className="p-2 text-left text-gray-800 dark:text-gray-100">Расхождение</th>
+              <th 
+                className="p-2 text-left text-gray-800 dark:text-gray-100 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                onClick={() => handleSort('discrepancy')}
+              >
+                Расхождение{getSortArrow('discrepancy')}
+              </th>
               <th className="p-2 text-left text-gray-800 dark:text-gray-100">Статус</th>
             </tr>
           </thead>

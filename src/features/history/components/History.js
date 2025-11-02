@@ -90,7 +90,9 @@ export default function History({ onOpenCSVModal }) {
     endItem,
     hasActiveFilters,
     hasChartData,
-    applyFilters
+    applyFilters,
+    sortConfig,
+    handleSort
   } = useHistoryData(reduxHistoryData, filters, dispatch);
 
   const [filterOpen, setFilterOpen] = useState(false);
@@ -191,6 +193,8 @@ export default function History({ onOpenCSVModal }) {
             startItem={startItem}
             endItem={endItem}
             finalTotalItems={finalTotalItems}
+            sortConfig={sortConfig} // ДОБАВИТЬ
+            handleSort={handleSort} // ДОБАВИТЬ
           />
         </div>
       </div>
