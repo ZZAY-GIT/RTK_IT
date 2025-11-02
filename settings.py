@@ -30,7 +30,7 @@ class Settings(BaseSettings):
 
     PROJECT_ROOT: pathlib.Path = pathlib.Path(__file__)
 
-    CONN_STR: str = Field(default="postgresql+asyncpg://warehouse_user:secure_password@localhost:6433/warehouse_db", alias="CONN_STR")
+    CONN_STR: str = Field(default="postgresql+asyncpg://warehouse_user:secure_password@localhost:5432/warehouse_db", alias="CONN_STR")
     JWT_SECRET: str = Field(default="key", alias="JWT_SECRET")
 
     YANDEX_API_KEY: str = Field(default="AQVN2shaS1078O7IG0Imrbg-E_oaaOMX331y1e4B", description="Yandex Cloud API key", alias="YANDEX_API_KEY")
