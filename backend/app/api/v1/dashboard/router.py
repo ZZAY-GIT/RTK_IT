@@ -1,4 +1,3 @@
-# app/api/v1/dashboard/router.py
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, HTTPException
 from app.api.v1.dashboard.websocket_manager import ws_handler, ws_manager
 from app.db.DataBaseManager import db as async_db

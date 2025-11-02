@@ -1,4 +1,3 @@
-# app/api/v1/admin/router.py
 from fastapi import APIRouter
 
 from app.api.v1.admin.users.router import router as users_router

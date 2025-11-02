@@ -8,7 +8,7 @@ from app.api.v1.router import api_router
 from app.db.session import engine
 from app.db.base import Base
 from app.api.v1.dashboard.websocket_manager import ws_manager
-from app.core.settings import settings
+from settings import REDIS, CACHE
 from app.db.DataBaseManager import db
 from redis.asyncio import Redis
 from fastapi_cache import FastAPICache
@@ -25,13 +25,13 @@ async def lifespan(app: FastAPI):
 
     # Redis + Cache
     redis = Redis(
-        host=settings.REDIS.host,
-        port=settings.REDIS.port,
-        db=settings.REDIS.db.cache,
+        host=REDIS.host,
+        port=REDIS.port,
+        db=REDIS.db,
     )
     FastAPICache.init(
         RedisBackend(redis),
-        prefix=settings.CACHE.prefix,
+        prefix=CACHE.prefix,
     )
     # Запуск broadcast
     broadcast_task = asyncio.create_task(

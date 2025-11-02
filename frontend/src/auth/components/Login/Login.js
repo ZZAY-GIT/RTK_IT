@@ -39,7 +39,7 @@ function Login() {
     }
 
     try {
-      const response = await axios.post('http://localhost:8000/api/auth/login', {
+      const response = await axios.post('http://backend:8000/api/auth/login', {
         email,
         password,
       });

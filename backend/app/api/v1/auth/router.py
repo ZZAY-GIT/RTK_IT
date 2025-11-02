@@ -1,4 +1,3 @@
-# app/api/v1/auth/router.py
 from fastapi import APIRouter
 from app.api.v1.schemas import LoginRequest
 from app.core.auth.service import auth_service

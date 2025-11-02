@@ -1,6 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List, Dict, Any
-from datetime import datetime  # <-- Добавьте этот импорт
+from datetime import datetime
 
 
 class LoginRequest(BaseModel):
