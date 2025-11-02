@@ -5,7 +5,7 @@ export const useMapControls = (initialScale = 1) => {
   const [mapControls, setMapControls] = useState({
     scale: initialScale,
     translateX: 0,
-    translateY: -70,
+    translateY: -180,
     isPanningEnabled: false
   });
 
@@ -36,7 +36,7 @@ export const useMapControls = (initialScale = 1) => {
     setMapControls({
       scale: 1,
       translateX: 0,
-      translateY: -70,
+      translateY: -180,
       isPanningEnabled: false
     });
   }, []);
